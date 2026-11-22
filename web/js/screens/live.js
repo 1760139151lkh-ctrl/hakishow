@@ -222,11 +222,13 @@ export function liveScreen() {
   }, { passive: true });
   track2.addEventListener('scrollend', () => { clearTimeout(settleTimer); settle(); });
   function settle() { cancelAnimationFrame(scrollRaf); shape(); const id = dots[previewIdx]?.dataset.style; if (id) commit(id, true); }
+  /** 带头顶挂件（王冠、发箍、帽子、耳朵）的特效包需要更多头顶空间，避免挂件被顶栏遮挡或超出画面。 */
+  const headroomOf = (/** @type {string} */ id) => { const pk = packOf(id); return [...(pk.wear || []), ...(pk.variants || []).flat()].some(w => w.at === 'crown') ? .6 : 0; };
   /** 滑动中：只切换渲染参数与名称，不改主题，保证跟手。 */
   function preview(/** @type {string} */ id) {
     const p = presetById(id); if (!p) return;
     current = id;
-    renderer?.setPreset(id); overlay.setPreset(id); applyBg();
+    renderer?.setPreset(id); renderer?.setHeadroom(headroomOf(id)); overlay.setPreset(id); applyBg();
     shutterImg.src = styleIcon(id);
     nameEl.textContent = p.name; hintEl.textContent = packOf(id).hint || p.line;
   }

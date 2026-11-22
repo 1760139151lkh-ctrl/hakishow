@@ -199,7 +199,7 @@ export function createRenderer(canvas, o = {}) {
   /** @type {import('./tracker.js').Track | null} */ let face = null;
   let bgMode = 0, bgReady = false, bgAspect = 1, bgWanted = '', segOn = false, segAt = 0;
   let lutId = 'none', lutAmt = 1;
-  let framing = { on: false, top: .12, bottom: .72 }, zoom = 1, fcx = .5, fcy = .5, framed = false;
+  let framing = { on: false, top: .12, bottom: .72 }, zoom = 1, fcx = .5, fcy = .5, framed = false, headroom = 0;
 
   /** 覆盖适配的基础裁剪，再叠加自动构图的缩放与平移。 */
   function fitCover() {
@@ -217,14 +217,14 @@ export function createRenderer(canvas, o = {}) {
     let u = (x / srcW - crop[0]) / crop[2]; if (mirror) u = 1 - u;
     return /** @type {[number, number]} */ ([u * 2 - 1, 1 - (y / srcH - crop[1]) / crop[3] * 2]);
   };
-  /** 人脸居中：目标是取景区（顶栏与底部面板之间）的视觉中心，人脸高度约占画面三成。 */
+  /** 人脸居中：目标是取景区（顶栏与底部面板之间）的视觉中心，人脸高度约占画面三成；佩戴头饰时把人脸下移并略微拉远，给头饰留出空间。 */
   function frameFace(/** @type {number} */ k) {
     if (!framing.on || !face) { zoom += (1 - zoom) * k * .5; fcx += (.5 - fcx) * k * .5; fcy += (.5 - fcy) * k * .5; framed = Math.abs(zoom - 1) > .002 || Math.abs(fcx - .5) > .002 || Math.abs(fcy - .5) > .002; return; }
     const p = face.pts, top = [p[30], p[31]], chin = [p[152 * 3], p[152 * 3 + 1]];
     const fh = Math.hypot(chin[0] - top[0], chin[1] - top[1]) / srcH;
     const W = canvas.width, H = canvas.height, s = Math.max(W / srcW, H / srcH), visH = H / s / srcH;
-    const zWant = Math.max(1, Math.min(1.45, .3 * visH / Math.max(.05, fh)));
-    const mx = (top[0] + chin[0]) / 2 / srcW, my = ((top[1] + chin[1]) / 2 - .1 * fh * srcH) / srcH;
+    const zWant = Math.max(1, Math.min(1.45, .3 * visH / Math.max(.05, fh) / (1 + .45 * headroom)));
+    const mx = (top[0] + chin[0]) / 2 / srcW, my = ((top[1] + chin[1]) / 2 - (.1 + .5 * headroom) * fh * srcH) / srcH;
     const zoneMid = (framing.top + framing.bottom) / 2;
     const cyWant = my - (zoneMid - .5) * visH / zWant;
     const dz = zWant - zoom, dx = mx - fcx, dy = cyWant - fcy;
@@ -324,6 +324,8 @@ export function createRenderer(canvas, o = {}) {
     setFace(f) { face = f; },
     /** 自动构图开关与取景区（画面高度的比例）。 */
     setFraming(/** @type {boolean} */ on, top = .12, bottom = .72) { framing = { on, top, bottom }; },
+    /** 头饰需要的额外头顶空间（以人脸高度为单位，0 表示没有头饰）。 */
+    setHeadroom(/** @type {number} */ h) { headroom = Math.max(0, Math.min(1, +h || 0)); },
     get crop() { return crop; },
     get mirror() { return mirror; },
     get size() { return [srcW, srcH]; },
