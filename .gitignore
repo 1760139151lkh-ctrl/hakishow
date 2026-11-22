@@ -14,3 +14,4 @@ workstation/
 *.safetensors
 *.ckpt
 .DS_Store
+dist/
