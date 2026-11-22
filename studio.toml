@@ -1,0 +1,71 @@
+# 工作室配置。这里是默认值；本机专用配置请写入 private/studio.toml
+# （保持相同结构，只填写需要修改的键）。private/ 绝不提交。
+
+[studio]
+engine = "auto"          # auto：优先使用已配置的接口密钥，其次使用可用的 Codex 命令行工具，否则使用模拟器
+workers = 2              # 允许同时运行的交互轮次数
+
+[codex]
+command = ["codex"]      # 启动 Codex 命令行工具的方式：PATH 中的名称或完整路径，加上所需的前置参数
+sandbox = "workspace-write"   # 每轮在 private/jobs 下的独立文件夹中运行，并且只能写入那里
+size = "1024x1536"       # 任务说明要求的尺寸：竖幅，与应用输出图像接近
+attach = true            # 同时向提示附上本轮图像（-i），使模型规划时能够看到它们
+args = []                # 每次 codex exec 使用的其他参数，例如 ["--profile", "likeness"]
+
+# 每次运行的其他 -c key=value 覆盖项，值采用 TOML 格式。例如，若图像工具需要网络：
+# [codex.overrides]
+# "sandbox_workspace_write.network_access" = true
+
+# 应用中每个速度档位对应一张配置表。model = "" 表示让 Codex 使用自身默认模型。
+[codex.pace.quick]
+model = ""
+effort = "low"           # model_reasoning_effort
+quality = "low"          # 任务说明对图像工具的质量要求
+timeout = 300            # 工作室放弃等待前的秒数
+
+[codex.pace.fine]
+model = ""
+effort = "medium"
+quality = "medium"
+timeout = 600
+
+[codex.pace.deep]
+model = ""
+effort = "high"
+quality = "high"
+timeout = 900
+
+# 房间、外观与背景创意：仅生成文字，因此速度较快。
+[codex.text]
+model = ""
+effort = "low"
+timeout = 150
+
+[codex.images]
+# 任务说明如何要求 Codex 制作图像。请根据本机 Codex 可用的图像工具调整此项。
+hint = "使用你的图像生成工具（GPT Image）。任务涉及修改图像时，将 in/ 中的该图像作为工具的输入图像，并在标注了区域时提供编辑蒙版，而不是从头描述图像。"
+
+# openai 引擎：直接通过 OpenAI 接口使用 GPT Image（likeness serve --engine openai）。这是最快的图像
+# 生成方式，并在生成过程中流式返回。密钥来自 OPENAI_API_KEY 或 key_file（该文件应保存在 private/ 下）。
+[openai]
+# key_file = "private/openai.key"
+size = "1024x1536"
+text_model = "gpt-5.4-mini"   # 房间、外观与背景创意
+
+[openai.pace.quick]
+model = "gpt-image-2.6-flare"
+quality = "low"
+partials = 1             # 模型提供中间图像时，在生成过程中显示的图像数量
+timeout = 120
+
+[openai.pace.fine]
+model = "gpt-image-2.6-flare"
+quality = "medium"
+partials = 2
+timeout = 180
+
+[openai.pace.deep]
+model = "gpt-image-2.6-sunburst"
+quality = "high"
+partials = 2
+timeout = 300

@@ -1,0 +1,8 @@
+# 统一的源文件换行格式。
+* text=auto eol=lf
+*.woff2 binary
+*.wasm binary
+*.task binary
+*.tflite binary
+*.jpg binary
+*.png binary

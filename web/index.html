@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+  /* 对屏幕键盘仅调整可视视口。Safari 已经采用此行为，且不支持此视口选项。 */
+  if (navigator.vendor !== 'Apple Computer, Inc.') document.querySelector('meta[name="viewport"]').content += ', interactive-widget=resizes-visual';
+</script>
+<meta name="theme-color" content="#0d0a1a">
+<meta name="color-scheme" content="light dark">
+<title>HakiShow · 一张自拍，全新肖像。</title>
+<meta name="description" content="新加坡创意肖像工作室：通过实时相机、照片工作室、局部编辑及对话引导的细化，探索 33 种风格。">
+<!-- studio-state -->
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="css/app.css">
+<script>
+  /* 渲染前恢复上一次主题，避免默认颜色闪现。 */
+  try {
+    const last = JSON.parse(localStorage.getItem('hakishow.theme') || 'null');
+    if (last) { for (const [k, v] of Object.entries(last.vars)) document.documentElement.style.setProperty(k, v); Object.assign(document.documentElement.dataset, last.data); }
+  } catch { /* 首次访问。 */ }
+</script>
+</head>
+<body>
+<main class="stage" id="stage">
+  <div class="ambience" aria-hidden="true"><img alt=""><img alt=""></div>
+  <div class="stage__deco" aria-hidden="true"></div>
+  <div class="screens"></div>
+  <div class="boot" aria-hidden="true"><span class="boot__mark">HakiShow</span><span class="boot__line">一张自拍，全新肖像。</span></div>
+</main>
+<aside class="desk-note" aria-hidden="true"><b>HakiShow</b><span>一张自拍，全新肖像。</span><span class="desk-note__tip">为竖屏设计 · 9:16</span></aside>
+<noscript><p style="padding:2rem;font-family:system-ui">HakiShow 需要启用 JavaScript（网页脚本）才能运行。</p></noscript>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+/**
+ * 在手机尺寸的 Chromium 中测试 HakiShow，连接两个刚启动的服务器：
+ *   showcase   静态演示（node tools/serve.mjs）：示例结果为预先制作的图像，自有照片则为本地预览
+ *   live       使用模拟器引擎的实际服务器（uv run likeness serve --engine simulator）；缺少 uv 时跳过
+ *
+ * 相机使用 Chromium 的模拟设备播放 tests/fixtures/camera/selfie.mjpeg（虚构人物），因此人脸
+ * 跟踪与增强现实贴纸实际运行。设置 LIKENESS_BROWSER_CHANNEL=chrome 可改用已安装的 Google Chrome。
+ */
+import { spawnSync } from 'node:child_process';
+import { homedir, tmpdir } from 'node:os';
+import { delimiter, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, devices } from '@playwright/test';
+import { existsSync, readdirSync } from 'node:fs';
+
+const SHOWCASE = 'http://127.0.0.1:4183', LIVE = 'http://127.0.0.1:8797';
+const env = { ...process.env, PATH: [join(homedir(), '.local', 'bin'), process.env.PATH].join(delimiter) };
+const hasUv = spawnSync('uv', ['--version'], { env }).status === 0;
+const camera = fileURLToPath(new URL('tests/fixtures/camera/selfie.mjpeg', import.meta.url));
+// npm run accept：较慢、全面的验收测试（每个按钮、每个滑块、键盘、安全区域），在 Chromium 中运行，
+// 若安装了 Playwright 的 WebKit，还会在 WebKit（Safari 引擎）中模拟 iPhone 13 运行
+const accept = process.env.LIKENESS_ACCEPT === '1';
+const cache = join(homedir(), '.cache', 'ms-playwright');
+const hasWebkit = existsSync(cache) && readdirSync(cache).some(d => d.startsWith('webkit-'));
+
+export default defineConfig({
+  testDir: 'tests/browser',
+  outputDir: 'test-results',
+  timeout: 90_000,
+  expect: { timeout: 15_000 },
+  workers: 1,
+  fullyParallel: false,
+  forbidOnly: true,
+  reporter: [['list']],
+  use: {
+    ...(process.env.LIKENESS_BROWSER_CHANNEL ? { channel: process.env.LIKENESS_BROWSER_CHANNEL } : {}),
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 1,
+    isMobile: true,
+    hasTouch: true,
+    locale: 'en-SG',
+    trace: 'retain-on-failure',
+    permissions: ['camera'],
+    launchOptions: { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', '--use-file-for-fake-video-capture=' + camera] },
+  },
+  projects: [
+    { name: 'showcase', testMatch: /showcase\.spec\.mjs$/, use: { baseURL: SHOWCASE } },
+    ...(hasUv ? [{ name: 'live', testMatch: /live\.spec\.mjs$/, use: { baseURL: LIVE } }] : []),
+    ...(hasUv && accept ? [{ name: 'accept', testMatch: /acceptance\.spec\.mjs$/, use: { baseURL: LIVE } }] : []),
+    ...(hasUv && accept && hasWebkit ? [{ name: 'accept-iphone', testMatch: /(acceptance|live)\.spec\.mjs$/, use: { ...devices['iPhone 13'], baseURL: LIVE, permissions: [], launchOptions: {} } }] : []),
+  ],
+  webServer: [
+    { command: 'node tools/serve.mjs 4183', url: SHOWCASE + '/index.html', reuseExistingServer: false, timeout: 30_000 },
+    ...(hasUv ? [{
+      command: 'uv run likeness serve --engine simulator --host 127.0.0.1 --port 8797', url: LIVE + '/api/health', reuseExistingServer: false, timeout: 120_000,
+      env: { ...env, LIKENESS_HOME: join(tmpdir(), 'hakishow-test-' + process.pid), LIKENESS_SIM_SPEED: '0.4' },
+    }] : []),
+  ],
+});

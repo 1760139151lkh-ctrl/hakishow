@@ -1,0 +1,22 @@
+{
+  "name": "hakishow",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "HakiShow：面向新加坡及亚太地区的英语创意人像工作室。",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "serve": "node tools/serve.mjs",
+    "check": "tsc -p web/jsconfig.json",
+    "test": "playwright test",
+    "accept": "LIKENESS_ACCEPT=1 playwright test --project=\"accept*\""
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
