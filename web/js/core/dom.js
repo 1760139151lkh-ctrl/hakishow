@@ -89,6 +89,17 @@ const P = {
   hd: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 9v6M7 12h3.6M10.6 9v6M14 9v6h1.4a3 3 0 0 0 0-6z"/>',
   history: '<path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
   file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+  grid: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/>',
+  sound: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.6 7.6 0 0 1 0 11"/>',
+  soundOff: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
+  hand: '<path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M12 10.5V9a1.5 1.5 0 0 1 3 0v2"/><path d="M15 10.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-.6a6 6 0 0 1-4.8-2.4L4.2 15.4a1.5 1.5 0 0 1 2.4-1.8L9 15"/>',
+  beauty: '<path d="M19 12a7 7 0 1 1-7-7"/><path d="M9 14.2c.8.9 1.8 1.3 3 1.3s2.2-.4 3-1.3"/><path d="M9.2 10.4v.4M14.8 10.4v.4" stroke-width="2.4"/><path d="M18.5 2.8l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"/>',
+  backdrop: '<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="12" cy="10.5" r="2.8"/><path d="M6.8 20c.9-2.8 2.8-4.3 5.2-4.3s4.3 1.5 5.2 4.3"/>',
+  drop: '<path d="M12 3.5s6 6.2 6 10.5a6 6 0 0 1-12 0c0-4.3 6-10.5 6-10.5z"/><path d="M9.5 14.5a2.6 2.6 0 0 0 2.5 2.4"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
+  faceSlim: '<path d="M7 5.5c-1 2-1.3 4.5-.6 7.2.8 3 3 5.8 5.6 5.8s4.8-2.8 5.6-5.8c.7-2.7.4-5.2-.6-7.2"/><path d="M3 12h2.4M21 12h-2.4M4.4 10.6L5.6 12l-1.2 1.4M19.6 10.6L18.4 12l1.2 1.4"/>',
+  chin: '<path d="M6 4.5c-.6 3.3-.2 6.6 1.4 9.4L12 20l4.6-6.1c1.6-2.8 2-6.1 1.4-9.4"/><path d="M9.5 20.5h5"/>',
+  nose: '<path d="M12 4c-.3 4.5-1.5 7.5-3.3 10.2-.8 1.3.1 2.8 1.6 2.8h3.4"/><path d="M9.8 14.8c-.9.2-1.6.9-1.6 1.7M14.4 14.6c.9.3 1.5 1 1.5 1.9"/>',
 };
 /** @param {keyof typeof P} name */
 export const icon = (name, cls = '') => `<svg class="ico ${cls}" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[name] || ''}</svg>`;

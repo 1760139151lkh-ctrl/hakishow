@@ -336,6 +336,62 @@
   "wave": {
    "w": 512,
    "h": 365
+  },
+  "glasses-heart": {
+   "w": 512,
+   "h": 207
+  },
+  "glasses-round": {
+   "w": 512,
+   "h": 219
+  },
+  "glasses-neon": {
+   "w": 512,
+   "h": 194
+  },
+  "glasses-star": {
+   "w": 512,
+   "h": 231
+  },
+  "halo": {
+   "w": 512,
+   "h": 208
+  },
+  "horns-devil": {
+   "w": 512,
+   "h": 481
+  },
+  "ears-bunny": {
+   "w": 373,
+   "h": 512
+  },
+  "crown-flower": {
+   "w": 512,
+   "h": 228
+  },
+  "beret": {
+   "w": 512,
+   "h": 317
+  },
+  "flame": {
+   "w": 396,
+   "h": 512
+  },
+  "cheek-heart": {
+   "w": 512,
+   "h": 445
+  },
+  "star-freckle": {
+   "w": 512,
+   "h": 493
+  },
+  "mustache": {
+   "w": 512,
+   "h": 168
+  },
+  "mask-fox": {
+   "w": 512,
+   "h": 483
   }
  },
  "scenes": [

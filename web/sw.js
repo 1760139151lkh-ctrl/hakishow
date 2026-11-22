@@ -1,5 +1,5 @@
 /* HakiShow 服务工作线程：静态资源优先走缓存；页面与接口请求始终使用网络。 */
-const CACHE = 'hakishow-static-v1';
+const CACHE = 'hakishow-static-v2';
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil((async () => {
   for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);

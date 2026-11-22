@@ -1,0 +1,40 @@
+/* ═══ 精修工作室（新版三入口）═══ */
+.studio .bar--root { padding-top: calc(var(--sat) + 10px); }
+.studio .bar--root .avatar { width: 40px; height: 40px; }
+.studio .bar--root .modes { justify-self: center; }
+.studio[data-panel] .bar .modes { display: inline-flex; }
+.studio .tools__fold { flex: .8 1 0; }
+.tp--stack { display: flex; flex-direction: column; }
+.tp--stack > .tp { overflow: visible; }
+.tp__sub { margin: 4px var(--gutter) 0; font-size: 13px; font-weight: 800; line-height: 1.2; letter-spacing: .04em; color: var(--soft); }
+/* 修改：区域在上，快捷操作在中，输入框在底部 */
+.tp--edit { display: flex; flex-direction: column; overflow-y: auto; }
+.tp--edit .chat { flex: none; overflow: visible; }
+.tp--edit .chat__thread { flex: none; max-height: 168px; overflow-y: auto; padding-top: 4px; }
+.tp--edit .chat__thread:not(:has(.msg--me)) { display: none; }
+.tp--edit .chat__thread .msg--sys { display: none; }
+.tp--edit .chat__quick { padding: 4px var(--gutter) 10px; }
+.tp--edit .pp { padding-bottom: 0; }
+.ed__foot[data-mode="parts"] > .chat__composer { display: none; }
+.ed__foot[data-mode="chat"] > .pp__foot { display: none; }
+/* 实时预览标签 */
+.badge--live { display: inline-flex; align-items: center; justify-content: center; height: 26px; padding: 0 11px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1; color: #fff; background: rgba(0, 0, 0, .42); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+/* 更换照片 */
+.pick3 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pick3__opt { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px; border-radius: 18px; text-align: left; background: color-mix(in srgb, var(--ink) 6%, transparent); box-shadow: inset 0 0 0 .5px var(--line); transition: transform .15s var(--ease-out); }
+.pick3__opt:active { transform: scale(.97); }
+.pick3__opt b { font-size: 15px; line-height: 1.3; }
+.pick3__opt > span:last-child { font-size: 12px; line-height: 1.4; color: var(--soft); }
+.pick3__ico { width: 38px; height: 38px; margin-bottom: 4px; border-radius: 12px; display: grid; place-items: center; color: var(--on-accent); background: var(--accent); }
+.pick3__ico .ico { width: 20px; height: 20px; }
+.sheet__label { margin: 16px 0 8px; font-size: 13px; font-weight: 700; color: var(--soft); }
+
+/* ═══ 结果页：实拍／AI 艺术 ═══ */
+.res__seg { position: absolute; left: 50%; top: calc(var(--sat) + 66px); transform: translateX(-50%); z-index: 3; display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: rgba(18, 18, 22, .42); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .16); backdrop-filter: blur(20px) saturate(1.6); -webkit-backdrop-filter: blur(20px) saturate(1.6); }
+.res__segopt { display: inline-flex; align-items: center; justify-content: center; height: 30px; min-width: 72px; padding: 0 14px; border-radius: 999px; font-size: 13.5px; font-weight: 700; line-height: 1; letter-spacing: .04em; color: rgba(255, 255, 255, .75); transition: background .3s var(--ease-out), color .3s; }
+.res__segopt[aria-checked="true"] { background: rgba(255, 255, 255, .94); color: #111; }
+.res__seg:not([hidden]) ~ .res__hint, .res__stage:has(.res__seg:not([hidden])) .res__hint { top: calc(var(--sat) + 108px); }
+.res__stage:has(.res__seg:not([hidden])) .res__badges { top: calc(var(--sat) + 146px); }
+.res__stage.is-live .res__pre { filter: none !important; animation: none !important; opacity: 1; }
+.res__stage.is-live .res__art { opacity: 0 !important; }
+.res__stage.is-live .res__hint { opacity: 0; }

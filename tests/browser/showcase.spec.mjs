@@ -6,7 +6,8 @@ import { PRESETS } from '../../web/js/presets.js';
 test('首次打开时几秒内说明用法，点击一次即可体验示例', async ({ page }) => {
   const errors = await open(page, { intro: true });
   await expect(page.getByRole('heading', { name: /一张自拍/ })).toBeVisible();
-  await expect(page.locator('.ob__steps li')).toHaveCount(3);
+  expect(await page.locator('.ob__bar').count()).toBeGreaterThan(3);
+  await expect(page.getByRole('button', { name: '开始拍摄' })).toBeVisible();
   await tidy(page);
   await page.getByRole('button', { name: '试用示例', exact: true }).click();
   await expect(page.locator('.result')).toHaveAttribute('data-state', 'done', { timeout: 15000 });
@@ -23,11 +24,33 @@ test('实时相机跟踪面部并应用风格', async ({ page }) => {
   await page.locator('.live .pill', { hasText: '氛围' }).click();
   await expect(page.locator('.live__name')).toHaveText('复古数码相机');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'ccd');
-  for (const t of ['compare', 'strength']) {
-    await page.locator(`.tool[data-tool="${t}"]`).click();
-    await expect(page.locator(`.tool[data-tool="${t}"]`)).toHaveAttribute('aria-pressed', 'true');
-    await page.locator(`.tool[data-tool="${t}"]`).click();
-  }
+  await page.locator('.tool[data-tool="compare"]').click();
+  await expect(page.locator('.tool[data-tool="compare"]')).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('.tool[data-tool="compare"]').click();
+  await expect(page.locator('.tool[data-tool="compare"]')).toHaveAttribute('aria-pressed', 'false');
+  // 美颜面板：美颜、美型、滤镜、特效四组，滑块即时生效。
+  await page.locator('.tool[data-tool="beauty"]').click();
+  await expect(page.locator('.bp')).toBeVisible();
+  await page.locator('.bp__tab', { hasText: '美型' }).click();
+  await page.locator('.bp__item', { hasText: '大眼' }).click();
+  await page.locator('.bp__range').fill('60');
+  await expect(page.locator('.bp__val')).toHaveText('60');
+  await page.locator('.bp__tab', { hasText: '滤镜' }).click();
+  await page.locator('.bp__look[data-look="film"]').click();
+  await expect(page.locator('.bp__look[data-look="film"]')).toHaveAttribute('aria-pressed', 'true');
+  await tidy(page);
+  await page.locator('.live__view').click({ position: { x: 40, y: 200 } });
+  await expect(page.locator('.bp')).toBeHidden();
+  // 背景：跟随特效／原景／虚化／场景。
+  await page.locator('.tool[data-tool="bg"]').click();
+  await page.locator('.bgpop__opt', { hasText: '虚化' }).click();
+  await expect(page.locator('.bgpop__opt', { hasText: '虚化' })).toHaveAttribute('aria-checked', 'true');
+  // 全部特效：搜索与互动筛选。
+  await page.locator('.live__browse').click();
+  await page.locator('.fxs__search').fill('喷火');
+  await expect(page.locator('.fxs__item')).toHaveCount(1);
+  await page.locator('.fxs__item').click();
+  await expect(page.locator('.live__name')).toHaveText('小小龙');
   await tidy(page);
 });
 
@@ -37,7 +60,7 @@ test('相机权限被拒绝时平顺引导至照片工作室', async ({ page }) 
   await camera(page);
   await expect(page.locator('.live')).toHaveAttribute('data-cam', 'denied');
   await expect(page.locator('.gate__text')).toContainText('照片');
-  await page.locator('.gate .btn--ghost').click();
+  await page.getByRole('button', { name: '用照片创作' }).first().click();
   await expect(page).toHaveURL(/#\/studio/);
 });
 
@@ -49,7 +72,7 @@ test('上传一次即可尝试任意风格；每项修改均可撤销与重做�
   await page.locator('.tpanel .pill', { hasText: '氛围' }).click();
   await page.locator('.scard[data-style="neon"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'neon');
-  await tool(page, '调整');
+  await tool(page, '微调');
   const knob = page.locator('.knob', { hasText: '风格强度' }).locator('input');
   await knob.fill('95'); await knob.dispatchEvent('change');
   await expect(page.locator('.knob', { hasText: '风格强度' }).locator('.knob__val')).toContainText('95');
@@ -69,7 +92,7 @@ test('上传一次即可尝试任意风格；每项修改均可撤销与重做�
   await make(page, 15000);
   await expect(page.locator('.hud__btn--main')).toBeVisible();
   await tidy(page);
-  await page.locator('.studio .chip', { hasText: '作品库' }).click();
+  await page.locator('.studio .bar .avatar').first().click();
   await expect(page.locator('.tile')).toHaveCount(1);
   await page.locator('.tile').click();
   await expect(page.locator('.trail__item')).toHaveCount(1);
@@ -81,8 +104,8 @@ test('上传一次即可尝试任意风格；每项修改均可撤销与重做�
 
 test('返回手势先收起已打开面板，且不会离开照片工作室', async ({ page }) => {
   await useSample(page, 0);
-  await tool(page, '细节');
-  await expect(page.locator('.studio')).toHaveAttribute('data-panel', 'detail');
+  await tool(page, '微调');
+  await expect(page.locator('.studio')).toHaveAttribute('data-panel', 'tune');
   await page.goBack();
   await expect(page.locator('.studio')).not.toHaveAttribute('data-panel', /.+/);
   await expect(page).toHaveURL(/#\/studio/);
@@ -98,11 +121,15 @@ test('每种动画风格均应用其主题，示例会打开对应风格的相�
   await camera(page);
   await page.locator('.live .pill', { hasText: '动漫' }).click();
   await expect(page.locator('.live .dot')).toHaveCount(acg.length);
-  for (const p of acg.slice(0, 4)) {
+  // 切换分类后自动选中第一个风格；居中的圆点位于快门下方（点击即拍照），因此只点击其余风格。
+  const first = await page.locator('.live .dot[aria-selected="true"]').getAttribute('data-style');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', first || '');
+  const others = acg.filter(p => p.id !== first);
+  for (const p of others.slice(0, 3)) {
     await page.locator(`.live .dot[data-style="${p.id}"]`).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', p.id);
   }
-  const last = acg[3];
+  const last = others[2];
   await page.locator('.live__label').click();
   await expect(page.locator('.ex__person').first()).toBeVisible();
   await page.locator('.ex__acts .btn--main').click();

@@ -6,6 +6,8 @@
 |---|---|---|---|
 | `mediapipe/vision_bundle.mjs`、`mediapipe/wasm/*` | MediaPipe Tasks Vision 的 JavaScript 和 WebAssembly 运行时 | `@mediapipe/tasks-vision` | Apache 2.0 许可证 |
 | `mediapipe/face_landmarker.task` | 人像区域和跟踪所使用的面部关键点模型 | MediaPipe 面部关键点检测器，float16（16 位浮点） | Apache 2.0 许可证 |
+| `mediapipe/selfie_segmenter.tflite` | 实时相机人像分割（背景虚化、场景替换）使用的人像分割模型 | MediaPipe 人像分割器（Selfie Segmenter，方形输入），float16 | Apache 2.0 许可证 |
+| `../fonts/noto-sans-sc.woff2`、`noto-serif-sc.woff2` | 界面中文字体（思源黑体／思源宋体子集，由 `tools/subset_fonts.py` 按界面实际用字生成，并覆盖字体度量以使中文字形垂直居中） | Noto Sans SC／Noto Serif SC 可变字体 | SIL 开放字体许可证 1.1 |
 | `mediapipe/hair_segmenter.tflite` | 用于受支持本地预览的头发分割模型 | MediaPipe 头发分割器，float32（32 位浮点） | Apache 2.0 许可证 |
 | `../fonts/fraunces.woff2` | Fraunces 字体 | Fontsource／Google Fonts | SIL 开放字体许可证 1.1 |
 | `../fonts/courier-prime.woff2`、`vt323.woff2`、`instrument-serif.woff2`、`space-grotesk.woff2`、`cinzel.woff2` | 各风格专用字体 | Google Fonts | SIL 开放字体许可证 1.1 |

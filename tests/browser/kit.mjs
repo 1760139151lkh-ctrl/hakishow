@@ -47,18 +47,21 @@ export async function camera(page) {
   if (await ask.isVisible()) await ask.click();
 }
 
-/** 将一位虚构示例人物放入照片工作室。 */
+/** 将一位虚构示例人物放入精修工作室：工作室会自动载入默认示例，再通过“更换照片”选择第 nth 位。 */
 export async function useSample(page, nth = 0) {
   await page.goto('/?skipintro#/studio');
-  await page.getByRole('button', { name: '试用示例', exact: true }).click();
-  await page.locator('.sample').nth(nth).click();
-  await expect(page.locator('.studio')).toHaveAttribute('data-has', 'photo');
-  await expect(page.locator('.sheet')).toHaveCount(0);   // 示例抽屉已关闭。
+  await expect(page.locator('.studio')).toHaveAttribute('data-has', 'photo', { timeout: 15000 });
+  await page.locator('.frame__hud .hud__btn').first().click();
+  await page.locator('.sheet .sample').nth(nth).click();
+  await expect(page.locator('.sheet')).toHaveCount(0);   // 更换照片抽屉已关闭。
+  await expect(page.locator('.versions .ver--src img')).toHaveAttribute('src', /.+/);
 }
 
-/** 在图像下方面板中打开照片工作室的一项工具（风格、调整、细节、区域、对话）。 */
+/** 旧工具名到新入口的对应：调整、细节并入“微调”，区域、对话并入“修改”。 */
+const TOOL = { 调整: '微调', 细节: '微调', 区域: '修改', 对话: '修改' };
+/** 在图像下方面板中打开精修工作室的一个入口（风格、修改、微调）。 */
 export async function tool(page, label) {
-  const b = page.locator('.tool2', { hasText: label });
+  const b = page.locator('.tool2', { hasText: TOOL[label] || label });
   if ((await b.getAttribute('aria-selected')) !== 'true') await b.click();
   await expect(b).toHaveAttribute('aria-selected', 'true');
 }

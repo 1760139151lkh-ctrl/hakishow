@@ -1,4 +1,6 @@
-/** 照片工作室：一次上传后可反复风格化和编辑的精细肖像工作区。画布：对比当前版本与来源图、跟踪进度，并直接在图上选择或涂抹可编辑区域。版本：每张照片各自的时间顺序链；选择任意版本即可查看或继续编辑。工具：风格、调整、细节、区域和对话会打开宽敞面板，同时保持图片可见；收起或返回会关闭面板。主操作为“开始创作”，在相应面板中改为“应用编辑”或“发送”。撤销和重做覆盖风格、滑块、细节、区域、版本及照片，刷新后依然有效。 */
+/** 精修工作室：打开即可体验——没有照片时自动载入示例肖像，随时可换成自己的照片。
+ *  三个入口：风格（选风格，画布立即显示本地预览，所见即所得）、修改（点选脸部区域或涂抹，再用一句话描述想改什么；快捷操作包括变体、角度、换背景与清理）、微调（风格强度、相似度、细节配饰、格式与画质）。
+ *  版本：每张照片各自的时间顺序链，选择任意版本即可继续编辑；撤销和重做覆盖全部操作，刷新后依然有效。 */
 import { h, icon, toast, chooseFile, reduced } from '../core/dom.js';
 import { go, overlay } from '../core/nav.js';
 import { on } from '../core/bus.js';
@@ -20,9 +22,10 @@ import { T } from '../copy.js';
 
 /** @typedef {import('../core/data.js').Work} Work */
 const TOOLS = /** @type {const} */ ([
-  { id: 'style', label: '风格', ico: 'palette' }, { id: 'tune', label: '调整', ico: 'sliders' }, { id: 'detail', label: '细节', ico: 'sparkle' },
-  { id: 'parts', label: '区域', ico: 'face' }, { id: 'chat', label: '对话', ico: 'chat' },
+  { id: 'style', label: '风格', ico: 'palette' }, { id: 'edit', label: '修改', ico: 'wand' }, { id: 'tune', label: '微调', ico: 'sliders' },
 ]);
+/** 旧版草稿中的面板编号映射到新的三个入口。 */
+const OLD_TOOL = /** @type {Record<string, string>} */ ({ detail: 'tune', parts: 'edit', chat: 'edit' });
 
 export function studioScreen() {
   // ── 状态：S 中的每个值都支持撤销。──
@@ -37,7 +40,7 @@ export function studioScreen() {
   };
   S.shown = d0.shown && workById(d0.shown)?.source === S.source ? String(d0.shown) : '';
   S.params = loadParams(S.preset, d0.preset === S.preset ? d0.params : null);
-  let tool = /** @type {string} */ (d0.panel || ''), cat = d0.cat || 'hot', unwatch = () => {}, closeOverlay = /** @type {(() => void) | null} */ (null);
+  let tool = /** @type {string} */ (OLD_TOOL[d0.panel] || d0.panel || ''), cat = d0.cat || 'hot', unwatch = () => {}, closeOverlay = /** @type {(() => void) | null} */ (null);
 
   function loadParams(/** @type {string} */ id, /** @type {any} */ given) {
     const p = /** @type {any} */ (presetById(id)), saved = given || pref('params.' + id, {});
@@ -57,8 +60,10 @@ export function studioScreen() {
 
   // ── 标题栏 ──
   const bar = h('header.bar.bar--root', null,
-    h('button.chip', { type: 'button', onclick: () => go('gallery'), 'aria-label': T.gallery }, h('span', { html: icon('gallery') }), h('span', null, T.gallery)),
-    h('h1.bar__title', null, T.studio),
+    h('button.avatar', { type: 'button', onclick: () => go('gallery'), 'aria-label': T.gallery, title: T.gallery }, h('span', { html: icon('gallery') })),
+    h('nav.modes.modes--solid', { 'aria-label': '模式' },
+      h('button.modes__opt', { type: 'button', onclick: () => go('live') }, h('span', null, '拍摄')),
+      h('button.modes__opt', { type: 'button', 'aria-current': 'page' }, h('span', null, '精修'))),
     h('button.avatar', { type: 'button', onclick: () => go('me'), 'aria-label': T.me }, h('span', { html: icon('user') })));
 
   // ── 画布 ──
@@ -71,9 +76,10 @@ export function studioScreen() {
   const prog = progressBox(() => S.shown && stop(S.shown));
   const failBox = h('div.frame__fail', { hidden: true });
   const frameBox = h('div.frame__img', null, before, pre, after, tintC, markC, brushC, prog, failBox);
-  const cmp = compare(frameBox, before, after, { enabled: () => tool !== 'parts' && !!S.shown && workById(S.shown)?.state === 'done' });
+  const cmp = compare(frameBox, before, after, { enabled: () => tool !== 'edit' && !!S.shown && workById(S.shown)?.state === 'done' });
   const styleChip = h('button.hud__chip', { type: 'button', 'aria-label': '查看此风格示例', onclick: () => openExamples(S.preset, { onUse: id => ctx.pickStyle(id) }) });
-  const changeBtn = h('button.hud__btn', { type: 'button', onclick: () => pickPhoto(), 'aria-label': T.change }, h('span', { html: icon('image') }), h('span', null, '更换'));
+  const changeLabel = h('span', null, '更换');
+  const changeBtn = h('button.hud__btn', { type: 'button', onclick: () => changePhoto(), 'aria-label': T.change }, h('span', { html: icon('image') }), changeLabel);
   const undoBtn = h('button.hud__ub', { type: 'button', 'aria-label': T.undo, title: T.undo, onclick: () => doUndo(), html: icon('undo') });
   const redoBtn = h('button.hud__ub', { type: 'button', 'aria-label': T.redo, title: T.redo, onclick: () => doRedo(), html: icon('redo') });
   const saveMini = h('button.hud__btn', { type: 'button', onclick: () => withShown(async w => saveImage(w, await resultUrl(w))) }, h('span', { html: icon('download') }), h('span', null, '保存'));
@@ -101,10 +107,7 @@ export function studioScreen() {
   const goLabel = h('b.cta__label'), goSub = h('span.cta__sub');
   const goBtn = h('button.cta', { type: 'button', onclick: () => ctx.make() }, h('span.cta__ico', { html: icon('sparkle') }), h('span.cta__text', null, goLabel, goSub));
   const dock = h('div.studio__dock', null, toolRow, tpanel, h('div.dock__cta', null, goBtn));
-  const modes = h('nav.modes.modes--solid', { 'aria-label': '模式' },
-    h('button.modes__opt', { type: 'button', onclick: () => go('live') }, T.live),
-    h('button.modes__opt', { type: 'button', 'aria-current': 'page' }, T.studio));
-  const el = h('section.screen.studio', { 'aria-label': T.studio }, bar, canvas, dock, modes);
+  const el = h('section.screen.studio', { 'aria-label': T.studio }, bar, canvas, dock);
 
   // ── 共用面板上下文 ──
   const ctx = {
@@ -121,14 +124,15 @@ export function studioScreen() {
       const was = presetById(S.preset)?.name;
       S.preset = id; S.params = loadParams(id, null);
       applyTheme(id);
-      commit('已切换为' + presetById(id)?.name + '' + (was ? '（之前为' + was + ')' : ''));
+      if (S.shown && workById(S.shown)?.state === 'done' && workById(S.shown)?.op === 'restyle') S.shown = '';   // 换风格时回到原图，直接看到新风格的预览
+      commit('已切换为' + presetById(id)?.name + '' + (was ? '（之前为' + was + '）' : ''));
       paintAll();
     },
     /** 滑块手势结束时更新设置。 @param {Record<string, any>} patch @param {string} label */
     setParams(patch, label) { Object.assign(S.params, patch); commit(label); paintCta(); paintChip(); },
     setFormat(/** @type {'avatar' | 'portrait'} */ v) { S.format = v; commit('格式：' + T.format[v]); paintCanvas(); paintCta(); },
     resetParams() { S.params = { ...defaultsOf(/** @type {any} */ (presetById(S.preset))), words: '' }; commit('重置为' + presetById(S.preset)?.name + '的默认设置'); paintAll(); },
-    setPicks(/** @type {import('../parts.js').Pick[]} */ picks, /** @type {string} */ label) { S.picks = picks; commit(label); },
+    setPicks(/** @type {import('../parts.js').Pick[]} */ picks, /** @type {string} */ label) { S.picks = picks; commit(label); panels.edit?.sync?.(); },
     /** 创建完整的风格变换。 */
     make,
     /** 局部编辑、对话、变体和角度均使用当前显示的版本。 @param {Partial<import('../core/generate.js').Ask> & { label: string }} o */
@@ -155,7 +159,35 @@ export function studioScreen() {
       return b;
     },
   };
-  const panels = /** @type {Record<string, any>} */ ({ style: stylePanel(ctx), tune: tunePanel(ctx), detail: detailPanel(ctx), parts: partsPanel(ctx), chat: chatPanel(ctx) });
+  const P = { style: stylePanel(ctx), tune: tunePanel(ctx), detail: detailPanel(ctx), parts: partsPanel(ctx), chat: chatPanel(ctx) };
+  const panels = /** @type {Record<string, any>} */ ({ style: P.style, edit: editPanel(), tune: tunePanel2() });
+  /** 微调：滑块、格式与画质在上，细节配饰与补充要求在下，共用一个“开始创作”。 */
+  function tunePanel2() {
+    const both = [P.tune, P.detail];
+    return {
+      body: h('div.tp.tp--stack', null, P.tune.body, h('h3.tp__sub', null, '细节与配饰'), P.detail.body), foot: P.tune.foot,
+      shown() { for (const p of both) p.shown(); }, repaint() { for (const p of both) p.repaint(); }, paintCta() { for (const p of both) p.paintCta(); },
+    };
+  }
+  /** 修改：区域与画笔（局部编辑）+ 一句话描述（对话编辑）合为一处。
+   *  选中区域或涂抹后，底部为“应用编辑”；否则为对话输入框。 */
+  function editPanel() {
+    const partsFoot = /** @type {HTMLElement} */ (P.parts.foot);
+    const partsCta = /** @type {HTMLElement} */ (partsFoot.querySelector('.cta'));
+    const foot = h('div.ed__foot', null, partsFoot, P.chat.foot);
+    // 选中区域或进入画笔模式时显示“应用编辑”，否则显示一句话输入框。
+    const sync = () => { foot.dataset.mode = ctx.S.picks.length > 0 || frame.dataset.mode === 'paint' ? 'parts' : 'chat'; };
+    new MutationObserver(sync).observe(frame, { attributes: true, attributeFilter: ['data-mode'] });
+    void partsCta;
+    return {
+      body: h('div.tp.tp--edit', null, P.parts.body, P.chat.body), foot,
+      shown() { P.parts.shown?.(); P.chat.shown?.(); sync(); },
+      hidden() { P.parts.hidden?.(); P.chat.hidden?.(); },
+      repaint() { P.parts.repaint?.(); P.chat.repaint?.(); sync(); },
+      paintCta() { P.parts.paintCta?.(); P.chat.paintCta?.(); sync(); },
+      sync,
+    };
+  }
 
   function withShown(/** @type {(w: Work) => Promise<void>} */ fn) {
     const w = ctx.shownWork(); if (!w || w.state !== 'done') return;
@@ -164,7 +196,8 @@ export function studioScreen() {
 
   // ── 打开与关闭面板 ──
   function openPanel(/** @type {string} */ id, instant = false) {
-    if (!ctx.sourceObj() && (id === 'parts' || id === 'chat')) { toast(T.noPhoto + ' ' + (id === 'parts' ? '即可编辑局部区域。' : '即可通过对话进行编辑。'), { action: { label: T.upload, run: () => pickPhoto() } }); return; }
+    id = OLD_TOOL[id] || id;
+    if (!panels[id]) return;
     const was = tool;
     if (was && was !== id) panels[was]?.hidden?.();
     tool = id; keep();
@@ -190,8 +223,8 @@ export function studioScreen() {
     paintCta();
     requestAnimationFrame(() => { brushFit(); paintCanvasOverlays(); });
   }
-  const brushFit = () => panels.parts?.fit?.();
-  const paintCanvasOverlays = () => panels.parts?.overlay?.();
+  const brushFit = () => P.parts?.fit?.();
+  const paintCanvasOverlays = () => P.parts?.overlay?.();
 
   // ── 无照片状态 ──
   function emptyState() {
@@ -205,7 +238,25 @@ export function studioScreen() {
       h('ul.drop__tips', null, h('li', null, '正面朝向相机'), h('li', null, '使用均匀光线'), h('li', null, '照片保存在你的私人空间')));
   }
 
-  // ── 选择照片 ──
+  // ── 选择照片：没有照片时自动使用示例肖像，不再要求先上传 ──
+  async function useSample(/** @type {string} */ who = 'mei', quiet = true) {
+    try {
+      const blob = await fetch(personArt(who)).then(r => r.blob());
+      const s = await addSource(blob, { sample: who });
+      if (quiet) { S.source = s.id; S.shown = ''; S.picks = []; keep(); paintAll(); }
+      else useSource(s, '正在使用示例肖像');
+    } catch { paintCanvas(); }
+  }
+  /** 更换照片：上传、示例或返回相机拍一张。 */
+  function changePhoto() {
+    const { close } = sheet(() => [
+      h('div.pick3', null,
+        h('button.pick3__opt', { type: 'button', onclick: () => { close(); pickPhoto(); } }, h('span.pick3__ico', { html: icon('upload') }), h('b', null, '上传照片'), h('span', null, '正面、光线均匀效果最好')),
+        h('button.pick3__opt', { type: 'button', onclick: () => { close(); go('live'); } }, h('span.pick3__ico', { html: icon('camera') }), h('b', null, '现在拍一张'), h('span', null, '打开实时相机'))),
+      h('p.sheet__label', null, '或使用示例肖像'),
+      h('div.samples', null, ...samples().map(who => h('button.sample', { type: 'button', 'aria-label': '示例' + who, onclick: () => { close(); useSample(who, false); } }, h('img', { src: personArt(who, 'm'), alt: '', loading: 'lazy' })))),
+    ], { title: '更换照片' });
+  }
   async function pickPhoto() {
     const f = await chooseFile();
     if (!f) return;
@@ -311,7 +362,9 @@ export function studioScreen() {
       frame.dataset.state = 'photo';
       ratio(before.naturalWidth / before.naturalHeight);
       cmp.set(1); after.removeAttribute('src');
+      changeLabel.textContent = src.sample ? '换成我的照片' : '更换';
       paintHud(); paintCanvasOverlays();
+      previewStyle();
       return;
     }
     if (tip.dataset.tone !== 'warn') { tip.textContent = ''; delete tip.dataset.tone; }
@@ -328,6 +381,25 @@ export function studioScreen() {
       });
     } else showFail(w);
     paintHud(); paintCanvasOverlays();
+  }
+  /** 查看原图时，立即在画布上用本地渲染预览所选风格（所见即所得）；按住画面查看原图。 */
+  let previewKey = '';
+  async function previewStyle() {
+    const src = ctx.sourceObj();
+    if (!src || S.shown || reduced) return;
+    const key = src.id + '|' + S.preset + '|' + S.params.strength;
+    if (previewKey === key && pre.classList.contains('is-in')) return;
+    previewKey = key;
+    try {
+      const blob = await sourceBlob(src); if (!blob) return;
+      const { stylizeStill } = await import('../live/renderer.js');
+      const out = await stylizeStill(blob, S.preset, Math.max(.55, (S.params.strength || 70) / 100), 'photo');
+      if (previewKey !== key || S.shown) return;
+      if (pre.dataset.local) URL.revokeObjectURL(pre.dataset.local);
+      const url = URL.createObjectURL(out);
+      pre.dataset.local = url; pre.src = url; pre.classList.remove('is-quick'); pre.classList.add('is-in');
+      badges.replaceChildren(h('span.badge.badge--live', null, '色调预览 · 生成后为完整艺术肖像'));
+    } catch { /* 渲染不可用时跳过本地预览。 */ }
   }
   /** 完整图片生成期间显示本地风格预览。 */
   async function quickLook(/** @type {Work} */ w) {
@@ -413,7 +485,7 @@ export function studioScreen() {
     S.shown = w.id;
     commit('已创作：' + p.name);
     paintVersions(); paintCanvas(); paintCta();
-    if (tool === 'style' || tool === 'tune' || tool === 'detail') panels[tool]?.repaint?.();
+    if (tool === 'style' || tool === 'tune') panels[tool]?.repaint?.();
   }
   /** 为活动记录描述相对于上一版本的变化。 */
   function describeChange(/** @type {Work | undefined} */ prev) {
@@ -433,7 +505,7 @@ export function studioScreen() {
 
   const offs = [
     on('finished', (/** @type {any} */ w) => { if (!el.hidden && w?.source === S.source) { paintVersions(); paintCta(); if (w?.id === S.shown && frame.dataset.state === 'working') paintCanvas(); if (tool) panels[tool]?.repaint?.(); } }),
-    on('works', () => { if (!el.hidden && S.source) { paintVersions(); if (tool === 'chat') panels.chat.repaint(); } }),
+    on('works', () => { if (!el.hidden && S.source) { paintVersions(); if (tool === 'edit') panels.edit.repaint(); } }),
   ];
   void offs;
   new ResizeObserver(() => { brushFit(); paintCanvasOverlays(); }).observe(frameBox);
@@ -460,12 +532,14 @@ export function studioScreen() {
           commit('继续编辑' + opName(w) + '');
         }
         saveDraft('studio', { ...d, from: '' });
-        if (d.tab && panels[d.tab]) { applyTheme(S.preset); paintAll(); openPanel(d.tab); return; }
+        const tab = d.tab && (OLD_TOOL[d.tab] || d.tab);
+        if (tab && panels[tab]) { applyTheme(S.preset); paintAll(); openPanel(tab); return; }
       } else if (d?.preset && d.preset !== S.preset && presetById(d.preset)) {
         S.preset = d.preset; S.params = loadParams(d.preset, null); commit('已选择' + presetById(d.preset)?.name + '');
       }
       applyTheme(S.preset);
       paintAll();
+      if (!S.source) useSample();
       if (tool && panels[tool] && !el.dataset.panel) openPanel(tool, true);
     },
     hidden() { if (tool) panels[tool]?.hidden?.(); },

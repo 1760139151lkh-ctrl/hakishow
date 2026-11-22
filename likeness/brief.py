@@ -36,11 +36,11 @@ OPS = {
                "然后是鼻子朝向左边缘的四分之三侧面。保持拍摄氛围不变，仅移动相机。"),
 }
 PIN_MARKS = "①②③④⑤⑥⑦⑧⑨"
-# 工作室英语回复中对各类修改的称呼。
+# 工作室中文回复中对各类修改的称呼。
 OP_WORDS = {"create": "一张新图像", "edit": "用户通过文字要求的修改", "restyle": "整张照片转换为艺术风格",
             "reference": "借鉴参考图外观的修改", "blend": "图像合成", "region": "仅修改面部或头发的部分区域",
             "backdrop": "新背景", "remove": "移除某些内容", "vary": "同一图像的另外三种表现", "angles": "从其他角度展示相同外观"}
-# 文本模型不可用或太慢时使用的简短英语建议。
+# 文本模型不可用或太慢时使用的简短中文建议。
 IDEAS = {
     "restyle": ["添加霓虹夜景背景", "添加一点闪光", "试试灿烂的笑容"], "edit": ["让效果更自然", "使用日落海滩背景", "添加一点闪光"],
     "region": ["让颜色更浅", "试试另一种发型", "添加一顶小王冠"], "vary": ["试试另一个角度", "添加星空背景", "添加一些烟花"],
@@ -73,7 +73,7 @@ def direct_brief(turn: Turn, inputs: Inputs) -> str:
 
 
 def reply_brief(turn: Turn) -> str:
-    """交给文本模型生成工作室回复的任务说明：以应用语气写一句简短英语，以及接下来可尝试的三个内容。"""
+    """交给文本模型生成工作室回复的任务说明：以应用语气写一句简短的简体中文回复，以及接下来可尝试的三个内容。"""
     op = turn.intent.op
     said = (turn.say or turn.text).strip()[:600]
     style = turn.room.name if turn.room and turn.room.name else (turn.preset or "")
@@ -81,11 +81,11 @@ def reply_brief(turn: Turn) -> str:
         "你代表 HakiShow 发言。它是面向新加坡与亚太地区创作者、将自拍变成艺术作品的俏皮工作室。",
         f"用户刚刚提出了以下要求，其图像正在生成：“{said or OP_WORDS.get(op, '一张新图像')}».",
         f"修改类型：{OP_WORDS.get(op, OP_WORDS['edit'])}." + (f" 他们的风格：“{style}»." if style else ""),
-        "使用自然英语填写 reply：一句温暖、俏皮的话，最多120个字符和一个表情符号，告知结果已完成。"
+        "使用自然的简体中文填写 reply：一句温暖、俏皮的话，最多60个汉字和一个表情符号，告知结果已完成。"
         " 若用户要求具体修改，请简短提及，例如“你的新刘海已完成！”或“你的滨水场景已完成！”。"
         " 不要描述用户的面孔或身体，也不要承诺你无法看到的细节。",
-        "使用英语填写 suggestions：恰好3项用户会喜欢、针对同一图像的不同后续修改；每项2至6个单词，最多"
-        " 48个字符，写成直接指令（例如“使用日落海滩背景”或“在我肩上添加一只小猫”）。"
+        "使用简体中文填写 suggestions：恰好3项用户会喜欢、针对同一图像的不同后续修改；每项4至14个汉字，最多"
+        " 24个字符，写成直接指令（例如“使用日落海滩背景”或“在我肩上添加一只小猫”）。"
         " 不要重复用户刚提出的要求；内容应适合所有年龄。",
     ])
 
@@ -134,9 +134,9 @@ def turn_brief(turn: Turn, inputs: Inputs, files: dict[str, str], *, size: str, 
               f"2. 制作图像{'' if turn.n > 1 else ''}. {image_hint}",
               "3. 如果图像工具自行保存 PNG 文件，就将文件保留在该位置。工作室会按生成顺序收集这些文件。"
               "否则只写入以下 PNG：" + ", ".join(f"out/{i + 1}.png" for i in range(turn.n)) + ".",
-              f'4. 最后，用一行回复：DONE {{"reply": "<以以下语气给用户写一至两句温暖的话：{", ".join(turn.room.voice[:3]) if turn.room and turn.room.voice else "温暖、简洁、准确"}>", "suggestions": ["<用户接下来可能提出的三个简短请求，每项最多五个单词>"]}}',
+              f'4. 最后，用一行回复：DONE {{"reply": "<以以下语气给用户写一至两句温暖的话：{", ".join(turn.room.voice[:3]) if turn.room and turn.room.voice else "温暖、简洁、准确"}>", "suggestions": ["<用户接下来可能提出的三个简短请求，每项最多十四个汉字>"]}}',
               '如果无法完成，改用一行回复：FAILED {"message": "<用直白语言说明原因>", "hint": "<用户可以调整什么>"}',
-              "所有摘要、回复、建议、失败消息与提示均使用自然英语。",
+              "所有摘要、回复、建议、失败消息与提示均使用自然的简体中文。",
               "不要提问，直接决定。不要修改 out/ 之外的文件。"]
     return "\n".join(lines)
 
@@ -146,16 +146,16 @@ def room_brief(text: str, palette: list[str] | None) -> str:
     return (f"根据以下氛围，为 HakiShow 应用创造一个房间：“{text}».{extra}\n"
             "房间决定应用的整体氛围：颜色、字体、装饰、景色、天气、进入房间的擦拭过渡、小音效、动态方式，以及工作室说话的语气。\n"
             "颜色采用 #rrggbb 格式。ground 与 ground2 是背景色（浅色房间使用淡色，深色房间使用深色）。surface 用于卡片；ink 在 surface 上必须清晰可读；soft 用于弱化文字；accent 与 accent2 是强调色。\n"
-            "每个名称、描述和语气文案均使用自然英语。语气文案应简短、温暖且符合角色；"
-            "placeholder 最多28个字符；send 是一个简短单词。\n"
+            "每个名称、描述和语气文案均使用自然的简体中文。语气文案应简短、温暖且符合角色；"
+            "placeholder 最多20个汉字；send 是一个两字的词。\n"
             "仅返回符合结构定义的 JSON。")
 
 
 def look_brief(text: str, has_picture: bool) -> str:
     source = "附件图像的外观" if has_picture and not text else f"«{text}»" + ("（附件图像展示了该外观）" if has_picture else "")
     return (f"根据以下内容描述一个 HakiShow 外观（图像风格）：{source}.\n"
-            "所有文本字段均使用英语。name：两至三个单词。line：一句能引发联想的话。"
-            "prompt：图像模型应遵循的风格指令，写成一行。\n"
+            "name 与 line 使用简体中文。name：二至六个汉字。line：一句能引发联想的话。"
+            "prompt：图像模型应遵循的风格指令，用英语写成一行。\n"
             "ramp：从最深阴影到最亮高光的五个 #rrggbb 颜色。keep：0至1，表示保留原图颜色的程度。grain、bloom、vignette：0至1。\n"
             "仅返回符合结构定义的 JSON。")
 
@@ -166,7 +166,7 @@ def backdrops_brief(text: str, near: float, dream: float, room: str, has_picture
             + f"倾向于{'近距离而亲密的场景（房间、墙面、窗户）' if near < .4 else '宽广而遥远的场景（风景、天际线）' if near > .6 else '介于近景与远景之间'}, "
             + f"并且 {'真实而具有摄影感' if dream < .4 else '梦幻而超现实' if dream > .6 else '介于现实与梦境之间'}.\n"
             + (f"用户正在以下名称的房间内工作：“{room}”；让它稍微影响这些创意。\n" if room else "")
-            + "所有文本字段均使用英语。每个背景包括：name（最多五个单词）和 words（图像模型能够据此绘制的一行生动描述）。\n"
+            + "每个背景包括：name（简体中文，最多八个汉字）和 words（图像模型能够据此绘制的一行生动英语描述）。\n"
             + "仅返回符合结构定义的 JSON。")
 
 
@@ -175,14 +175,14 @@ def style_brief(text: str, has_picture: bool) -> str:
     source = ("附件图像的外观（艺术媒介、调色、光线与情绪，绝不包括其中的人物）" if has_picture and not text
               else f"«{text}»" + ("（附件图像展示了用户所指的外观）" if has_picture else ""))
     return (f"根据以下内容，为将自拍变成艺术人像的俏皮应用 HakiShow 创造一种新的艺术头像风格：{source}.\n"
-            "面向新加坡与亚太地区创作者，所有文本字段使用自然英语：简短、生动、俏皮。"
-            "name：2至4个单词，最多48个字符。line：一句话，最多140个字符。"
-            "hook：简短短语，最多48个字符。\n"
+            "面向新加坡与亚太地区创作者，name、line、hook 与 details 的 label 使用自然的简体中文：简短、生动、俏皮。"
+            "name：二至六个汉字。line：一句话，最多60个汉字。"
+            "hook：简短短语，最多16个汉字。\n"
             "prompt：用英语撰写图像模型按此风格重绘人物照片时遵循的指令：艺术媒介、调色、光线、纹理、"
             "情绪与场景，并以 'Still clearly them.' 结尾。绝不提及在世艺术家、工作室、品牌或已有角色。\n"
             "colors：以 #rrggbb 格式给出此风格的应用主题颜色：bg 与 bg2（背景渐变）、surface（卡片）、ink（文字，在 surface 上清晰可读）、"
             "soft（弱化文字）、accent 与 accent2（强调色）。dark：是否为深色主题。\n"
             "look：能体现此风格的实时相机滤镜；各项取值0至1，sat 与 contrast 除外（0.5至1.6，1为中性）。\n"
             "details：恰好八个选项，每组两个（acc：配饰，light：光效，scene：背景，frame：边框），"
-            "每项包含1至4个单词、最多32个字符的英语 label，以及供图像模型使用的英语 words。\n"
+            "每项包含二至八个汉字的简体中文 label，以及供图像模型使用的英语 words。\n"
             "仅返回符合结构定义的 JSON。")

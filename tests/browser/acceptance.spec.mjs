@@ -41,24 +41,25 @@ test('实时相机强度会改变图像，并在重新加载后保留', async ({
     t.getContext('2d').drawImage(c, 0, 0, 48, 80);
     return Array.from(t.getContext('2d').getImageData(0, 0, 48, 80).data);
   });
-  await page.locator('.tool[data-tool="strength"]').click();
-  await expect(page.locator('.pop')).toBeVisible();
-  await page.locator('.vrange').fill('0');
-  await expect(page.locator('.pop__val')).toHaveText('0');
+  // 特效强度位于“美颜”面板的“特效”分组。
+  const fx = async () => { await page.locator('.tool[data-tool="beauty"]').click(); await page.locator('.bp__tab', { hasText: '特效' }).click(); await expect(page.locator('.bp')).toBeVisible(); };
+  await fx();
+  await page.locator('.bp__range').fill('0');
+  await expect(page.locator('.bp__val')).toHaveText('0');
   await page.waitForTimeout(600);
   const plain = await frame();
-  await page.locator('.vrange').fill('100');
-  await expect(page.locator('.pop__val')).toHaveText('100');
+  await page.locator('.bp__range').fill('100');
+  await expect(page.locator('.bp__val')).toHaveText('100');
   await page.waitForTimeout(600);
   const styled = await frame();
   const diff = plain.reduce((s, v, i) => s + Math.abs(v - styled[i]), 0) / plain.length;
   expect(diff, '强度为0和100时应产生明显不同的画面。').toBeGreaterThan(4);
-  await page.locator('.vrange').fill('35');
-  await page.locator('.vrange').dispatchEvent('change');
+  await page.locator('.bp__range').fill('35');
+  await page.locator('.bp__range').dispatchEvent('change');
   await page.reload();
   await camera(page);
-  await page.locator('.tool[data-tool="strength"]').click();
-  await expect(page.locator('.pop__val')).toHaveText('35');
+  await fx();
+  await expect(page.locator('.bp__val')).toHaveText('35');
 });
 
 test('工作室的四个滑块设置均会保留，并出现在创作历史中', async ({ page }) => {
@@ -201,7 +202,7 @@ test('交互控件避开刘海与主屏幕指示条安全区域', async ({ page 
   await make(page);
   await page.waitForTimeout(400);
   await clear('生成后的照片工作室');
-  for (const t of ['风格', '区域', '对话']) { await tool(page, t); await page.waitForTimeout(300); await clear('照片工作室·' + t); }
+  for (const t of ['风格', '修改', '微调']) { await tool(page, t); await page.waitForTimeout(300); await clear('精修·' + t); }
   for (const r of ['#/gallery', '#/me']) { await page.evaluate(x => { location.hash = x; }, r); await page.waitForTimeout(400); await clear(r); }
   await page.evaluate(() => { location.hash = '#/gallery'; }); await page.locator('.tile').first().click(); await page.waitForTimeout(500);
   await clear('作品详情');

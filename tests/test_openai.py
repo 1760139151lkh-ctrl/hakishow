@@ -206,7 +206,7 @@ def test_the_styles_art_is_served_and_cached(client):
     res = client.get("/img/styles/princess/mei.webp")
     assert res.status_code == 200 and res.headers["content-type"] == "image/webp"
     shell = client.get("/").text
-    assert 'id="asset-manifest"' in shell and 'lang="en-SG"' in shell
+    assert 'id="asset-manifest"' in shell and 'lang="zh-CN"' in shell
 
 
 def test_a_region_edit_keeps_every_pixel_outside_the_marked_region(live, api):

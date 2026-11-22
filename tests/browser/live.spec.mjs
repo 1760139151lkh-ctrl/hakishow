@@ -10,8 +10,11 @@ test('快门 → 即时结果 → 无需重拍即可切换风格 → 更多版�
   await page.locator('.shutter').click();
   await expect(page.locator('.result')).toBeVisible({ timeout: 10000 });
   await expect(page.locator('.prog__steps li')).toHaveCount(3);
+  // 实拍成片立即可见，艺术肖像完成后自动切换。
+  await expect(page.locator('.res__segopt', { hasText: '实拍' })).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('.result')).toHaveAttribute('data-state', 'done', { timeout: 30000 });
   await expect(page.locator('.res__badges')).toContainText('模拟结果');
+  await expect(page.locator('.res__segopt', { hasText: 'AI 艺术' })).toHaveAttribute('aria-checked', 'true');
   await page.locator('.res__styles .dot').nth(1).click();
   await expect(page.locator('.result')).toHaveAttribute('data-state', 'working');
   await expect(page.locator('.result')).toHaveAttribute('data-state', 'done', { timeout: 30000 });
@@ -28,7 +31,7 @@ test('快门 → 即时结果 → 无需重拍即可切换风格 → 更多版�
   await expect(page.locator('.res__sib').nth(2)).toHaveAttribute('aria-selected', 'true');
   await page.getByRole('button', { name: '调整细节' }).click();
   await expect(page).toHaveURL(/#\/studio/);
-  await expect(page.locator('.tool2[aria-selected="true"]')).toHaveText('调整');
+  await expect(page.locator('.tool2[aria-selected="true"]')).toHaveText('微调');
   await expect(page.locator('.versions .ver')).toHaveCount(6);
   await tidy(page);
   expect(errors).toEqual([]);
@@ -125,7 +128,7 @@ for (const [w, h] of [[360, 640], [430, 932], [1280, 800]]) {
     await page.setViewportSize({ width: w, height: h });
     await useSample(page, 0);
     await tidy(page);
-    for (const t of ['风格', '调整', '细节', '区域', '对话']) { await tool(page, t); await tidy(page); }
+    for (const t of ['风格', '修改', '微调']) { await tool(page, t); await tidy(page); }
     for (const route of ['#/gallery', '#/me', '#/live']) { await page.evaluate(r => { location.hash = r; }, route); await page.waitForTimeout(400); await tidy(page); }
   });
 }

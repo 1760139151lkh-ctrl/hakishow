@@ -207,7 +207,7 @@ def normalise_style(raw: dict, text: str = "") -> dict:
     radius = {"arch": "999px 999px 24px 24px", "circle": "50%", "pixel": "0px"}.get(raw.get("frame"), "20px")
     return {
         "id": "my-" + secrets.token_hex(4), "custom": True, "cat": "mine", "hot": 0,
-        "name": name, "line": clean(raw.get("line"), 160) or f"灵感来自以下内容的风格：{clean(text, 90) or '你的图像'}.",
+        "name": name, "line": clean(raw.get("line"), 160) or f"灵感来自{clean(text, 90) or '你的图像'}的风格。",
         "hook": clean(raw.get("hook"), 48) or "为你创作",
         "prompt": prompt,
         "theme": {"dark": dark, **colors, "onAccent": "#ffffff" if _lum(colors["accent"]) < .5 else "#1a1408",

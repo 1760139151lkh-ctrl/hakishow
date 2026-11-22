@@ -53,7 +53,7 @@ def test_a_turn_goes_through_codex_and_comes_back_as_renders(engine, tmp_path):
     assert next(e for e in job.events if e["type"] == "plan")["plan"]["summary"] == "正在绘制三个梨"
     assert "正在阅读请求" in [e.get("text") for e in job.events if e["type"] == "note"]
     result = next(e for e in job.events if e["type"] == "result")
-    assert result["provenance"]["kind"] == "render" and "Quick" in result["provenance"]["detail"] and result["prompt"] == "三个梨，蓝色桌布"
+    assert result["provenance"]["kind"] == "render" and "快速" in result["provenance"]["detail"] and result["prompt"] == "三个梨，蓝色桌布"
     reply = next(e for e in job.events if e["type"] == "reply")
     assert reply["text"] == "按要求绘制了三个梨。" and len(reply["suggestions"]) == 3
     folder = next((engine.home / "jobs").iterdir())

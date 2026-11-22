@@ -1,4 +1,4 @@
-/** 拍摄后的全屏结果页。创作过程中：显示拍摄帧，随后显示中间预览和完成图片，并提供进度与取消。创作完成后：按住对比，无需重拍即可切换风格，并提供调整、更多工具、保存、分享和重拍。更多工具：按画质重新生成、变体、角度、局部编辑、对话编辑和分享卡片。撤销返回上一版本，并支持重做。 */
+/** 拍摄后的全屏结果页。实拍与 AI 艺术两种成片：按下快门立即看到带美颜、背景与挂件的实拍照片，艺术肖像在后台生成，完成后自动切换，可随时用顶部切换按钮对照、分别保存。创作过程中：显示拍摄帧，随后显示中间预览和完成图片，并提供进度与取消。创作完成后：按住对比，无需重拍即可切换风格，并提供调整、更多工具、保存、分享和重拍。更多工具：按画质重新生成、变体、角度、局部编辑、对话编辑和分享卡片。撤销返回上一版本，并支持重做。 */
 import { h, icon, toast, holdable } from '../core/dom.js';
 import { go, back } from '../core/nav.js';
 import { presetById, inCategory, captionOf } from '../presets.js';
@@ -31,7 +31,19 @@ export function resultScreen(/** @type {Record<string, string>} */ params) {
   const badge = h('div.res__badges');
   const holdHint = h('span.res__hint', null, h('span', { html: icon('eye') }), T.hold);
   const sibs = h('div.res__sibs', { role: 'listbox', 'aria-label': '本组图片', hidden: true });
-  const stageEl = h('div.res__stage', { tabindex: '0', 'aria-label': '作品：按住查看原图' }, before, pre, art, prog, fail, badge, holdHint, sibs);
+  const segLive = h('button.res__segopt', { type: 'button', role: 'radio', onclick: () => setView('live') }, h('span', null, '实拍'));
+  const segArt = h('button.res__segopt', { type: 'button', role: 'radio', onclick: () => setView('art') }, h('span', null, 'AI 艺术'));
+  const seg = h('div.res__seg', { role: 'radiogroup', 'aria-label': '查看实拍或艺术肖像', hidden: true }, segLive, segArt);
+  const stageEl = h('div.res__stage', { tabindex: '0', 'aria-label': '作品：按住查看原图' }, before, pre, art, prog, fail, badge, holdHint, sibs, seg);
+  let view = 'art', liveUrl = '', doneTok = 0;
+  /** 在实拍照片与艺术肖像之间切换。 */
+  function setView(/** @type {string} */ v) {
+    if (v === 'live' && !liveUrl) v = 'art';
+    view = v;
+    stageEl.classList.toggle('is-live', v === 'live');
+    segLive.setAttribute('aria-checked', String(v === 'live')); segArt.setAttribute('aria-checked', String(v === 'art'));
+    if (v === 'live' && pre.getAttribute('src') !== liveUrl) { pre.classList.remove('is-partial'); pre.src = liveUrl; }
+  }
   holdable(stageEl, onHold => stageEl.classList.toggle('is-before', onHold && el.dataset.state === 'done'), 120);
 
   const styles = h('div.res__styles', { role: 'listbox', 'aria-label': T.another });
@@ -39,7 +51,7 @@ export function resultScreen(/** @type {Record<string, string>} */ params) {
     act('camera', T.retake, () => go('live')),
     act('sliders', T.tweak, () => toStudio('tune')),
     act('more', '更多', () => more()),
-    act('download', T.save, () => withDone(async w => saveImage(w, await resultUrl(w)))),
+    act('download', T.save, () => { const w = workById(id); if (view === 'live' && liveUrl && w) saveImage(w, liveUrl).catch(e => toast(e?.message || '未能保存，请重试。')); else withDone(async x => saveImage(x, await resultUrl(x))); }),
     act('send', T.tiktok, () => withDone(async w => shareTikTok(w, await resultUrl(w))), true));
   const titleEl = h('span');
   const undoBtn = h('button.ibtn', { type: 'button', 'aria-label': T.undo, title: T.undo, html: icon('undo'), onclick: () => undo() });
@@ -120,7 +132,8 @@ export function resultScreen(/** @type {Record<string, string>} */ params) {
     const shot = id.startsWith('shot') ? shotOf(id) : null;
     if (shot) {
       el.dataset.state = 'working'; prog.hidden = false; fail.hidden = true; sibs.hidden = true;
-      pre.src = shot.canvas.toDataURL('image/jpeg', .7);
+      liveUrl = shot.canvas.toDataURL('image/jpeg', .9);
+      seg.hidden = false; setView('live');
       prog.update({ stage: 0, value: .04, text: T.sending, eta: 10000, started: performance.now(), got: 0, of: 1 });
       try {
         const real = await shot.work;
@@ -142,7 +155,10 @@ export function resultScreen(/** @type {Record<string, string>} */ params) {
     const base = w.base ? workById(w.base) : null;
     before.src = base ? await resultUrl(base) : await sourceUrl(sourceById(w.source));
     const quick = previewOf(w.id);
+    if (quick) liveUrl = quick;
+    seg.hidden = !liveUrl || !!w.batch;
     if (!shot) { pre.onerror = () => { pre.onerror = null; pre.src = before.src; }; pre.src = quick || before.src; }
+    setView(liveUrl && w.state !== 'done' ? 'live' : 'art');
     art.classList.remove('is-in'); art.removeAttribute('src');
     paintStyles(w.preset);
     paintSibs(w);
@@ -159,9 +175,13 @@ export function resultScreen(/** @type {Record<string, string>} */ params) {
   }
   async function done(/** @type {Work} */ w, fresh = false) {
     el.dataset.state = 'done'; prog.hidden = true; fail.hidden = true;
+    const tok = ++doneTok;
     const url = await resultUrl(w);
+    if (tok !== doneTok) return;
     const im = new Image();
     im.onload = () => {
+      if (tok !== doneTok) return;   // 已有更新的一次显示，避免使用已回收的图片地址
+      setView('art');
       art.src = url;
       if (fresh) { art.classList.add('is-in'); reveal(stageEl, art, 1100); burst(stageEl, w.preset); buzz([16, 60, 24]); }
       else requestAnimationFrame(() => art.classList.add('is-in'));
@@ -170,6 +190,7 @@ export function resultScreen(/** @type {Record<string, string>} */ params) {
     badge.replaceChildren(...[kindBadge(w), w.ms ? h('span.badge', null, '用时' + Math.max(1, Math.round(w.ms / 1000)) + 's') : null].filter(Boolean));
     if (!sessionStorage.getItem('hakishow.toasted.' + w.id)) { sessionStorage.setItem('hakishow.toasted.' + w.id, '1'); toast(T.doneSaved, { action: { label: T.seeIt, run: () => go('gallery') }, tone: 'ok', ms: 3200 }); }
   }
+  art.addEventListener('error', () => { const w = workById(id); if (w?.state === 'done' && art.getAttribute('src')) resultUrl(w).then(u => { if (u !== art.getAttribute('src')) art.src = u; }); });
   function failed(/** @type {any} */ w) {
     el.dataset.state = 'failed'; prog.hidden = true; fail.hidden = false;
     fail.replaceChildren(h('b', null, w.state === 'stopped' ? '已取消' : T.failed), h('p', null, w.error || ''),
