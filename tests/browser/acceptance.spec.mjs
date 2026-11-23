@@ -9,7 +9,7 @@
  *   · 首次加载与界面切换保持流畅
  */
 import { test, expect } from '@playwright/test';
-import { open, useSample, camera, tool, cta, make, keyboardUp, keyboardDown } from './kit.mjs';
+import { open, useSample, camera, tool, cta, make, keyboardUp, keyboardDown, slide } from './kit.mjs';
 import { PRESETS } from '../../web/js/presets.js';
 
 test('首次加载与界面切换保持流畅', async ({ page }) => {
@@ -44,18 +44,17 @@ test('实时相机强度会改变图像，并在重新加载后保留', async ({
   // 特效强度位于“美颜”面板的“特效”分组。
   const fx = async () => { await page.locator('.tool[data-tool="beauty"]').click(); await page.locator('.bp__tab', { hasText: '特效' }).click(); await expect(page.locator('.bp')).toBeVisible(); };
   await fx();
-  await page.locator('.bp__range').fill('0');
+  await slide(page, '.bp__slider .sl', 0);
   await expect(page.locator('.bp__val')).toHaveText('0');
   await page.waitForTimeout(600);
   const plain = await frame();
-  await page.locator('.bp__range').fill('100');
+  await slide(page, '.bp__slider .sl', 100);
   await expect(page.locator('.bp__val')).toHaveText('100');
   await page.waitForTimeout(600);
   const styled = await frame();
   const diff = plain.reduce((s, v, i) => s + Math.abs(v - styled[i]), 0) / plain.length;
   expect(diff, '强度为0和100时应产生明显不同的画面。').toBeGreaterThan(4);
-  await page.locator('.bp__range').fill('35');
-  await page.locator('.bp__range').dispatchEvent('change');
+  await slide(page, '.bp__slider .sl', 35);
   await page.reload();
   await camera(page);
   await fx();
@@ -65,11 +64,10 @@ test('实时相机强度会改变图像，并在重新加载后保留', async ({
 test('工作室的四个滑块设置均会保留，并出现在创作历史中', async ({ page }) => {
   await useSample(page, 0);
   await tool(page, '调整');
-  const want = { '风格强度': '95', '相似度保留': '40', '细节程度': '20', Beauty: '70' };
+  const want = { '风格强度': '95', '相似度保留': '40', '细节程度': '20', '美颜': '70' };
   for (const [name, v] of Object.entries(want)) {
     const knob = page.locator('.knob', { hasText: name });
-    await knob.locator('input').fill(v);
-    await knob.locator('input').dispatchEvent('change');
+    await slide(page, knob.locator('.sl'), Number(v));
     await expect(knob.locator('.knob__val')).toContainText(v);
   }
   await make(page);
@@ -77,8 +75,7 @@ test('工作室的四个滑块设置均会保留，并出现在创作历史中',
   await tool(page, '调整');
   for (const [name, v] of Object.entries(want)) await expect(page.locator('.knob', { hasText: name }).locator('.knob__val')).toContainText(v);
   // 修改一个滑块并创建第二个版本；历史轨迹应描述差异。
-  const k = page.locator('.knob', { hasText: '风格强度' }).locator('input');
-  await k.fill('60'); await k.dispatchEvent('change');
+  await slide(page, page.locator('.knob', { hasText: '风格强度' }).locator('.sl'), 60);
   await make(page);
   await page.locator('.hud__btn', { hasText: '保存' }).waitFor();
   await page.evaluate(() => { location.hash = '#/gallery'; });

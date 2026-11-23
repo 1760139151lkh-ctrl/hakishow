@@ -1,6 +1,6 @@
 /** 静态演示：所有界面无需服务器即可工作；示例结果标记为示例，自有照片标记为本地预览。 */
 import { test, expect } from '@playwright/test';
-import { open, tidy, useSample, camera, tool, cta, make, keyboardUp, keyboardDown } from './kit.mjs';
+import { open, tidy, useSample, camera, tool, cta, make, keyboardUp, keyboardDown, slide } from './kit.mjs';
 import { PRESETS } from '../../web/js/presets.js';
 
 test('首次打开时几秒内说明用法，点击一次即可体验示例', async ({ page }) => {
@@ -13,6 +13,31 @@ test('首次打开时几秒内说明用法，点击一次即可体验示例', as
   await expect(page.locator('.result')).toHaveAttribute('data-state', 'done', { timeout: 15000 });
   await expect(page.locator('.res__badges')).toContainText('示例作品');
   await expect(page.locator('.res__art')).toHaveClass(/is-in/);
+  expect(errors).toEqual([]);
+});
+
+test('新手引导在欢迎页关闭后才出现：一步一步前进、可以跳过，之后不再自动出现', async ({ page }) => {
+  const errors = await open(page, { intro: true });
+  await expect(page.getByRole('button', { name: '开始拍摄' })).toBeVisible();
+  // 欢迎页还开着时，引导不能盖在它上面。
+  await page.waitForTimeout(1500);
+  await expect(page.locator('.tour')).toHaveCount(0);
+  await page.getByRole('button', { name: '开始拍摄' }).click();
+  await camera(page);
+  await expect(page.locator('.tour__tip')).toBeVisible({ timeout: 15000 });
+  await expect(page.locator('.tour__count')).toHaveText(/^第 1 步 \/ 共 \d 步$/);
+  await expect(page.locator('.tour__title')).toHaveText('换特效：左右滑动转盘');
+  await page.getByRole('button', { name: '下一步' }).click();
+  await expect(page.locator('.tour__count')).toHaveText(/^第 2 步/);
+  await expect(page.locator('.tour__title')).toHaveText('照着提示做动作');
+  await tidy(page);
+  await page.getByRole('button', { name: '跳过' }).click();
+  await expect(page.locator('.tour')).toHaveCount(0);
+  // 看过（或跳过）以后，重新打开不再自动出现。
+  await page.reload();
+  await camera(page);
+  await page.waitForTimeout(2000);
+  await expect(page.locator('.tour')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -33,7 +58,7 @@ test('实时相机跟踪面部并应用风格', async ({ page }) => {
   await expect(page.locator('.bp')).toBeVisible();
   await page.locator('.bp__tab', { hasText: '美型' }).click();
   await page.locator('.bp__item', { hasText: '大眼' }).click();
-  await page.locator('.bp__range').fill('60');
+  await slide(page, '.bp__slider .sl', 60);
   await expect(page.locator('.bp__val')).toHaveText('60');
   await page.locator('.bp__tab', { hasText: '滤镜' }).click();
   await page.locator('.bp__look[data-look="film"]').click();
@@ -73,8 +98,8 @@ test('上传一次即可尝试任意风格；每项修改均可撤销与重做�
   await page.locator('.scard[data-style="neon"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'neon');
   await tool(page, '微调');
-  const knob = page.locator('.knob', { hasText: '风格强度' }).locator('input');
-  await knob.fill('95'); await knob.dispatchEvent('change');
+  // 微调滑杆是跟手滑杆：像手指一样按住圆点拖到 95。
+  await slide(page, page.locator('.knob', { hasText: '风格强度' }).locator('.sl'), 95);
   await expect(page.locator('.knob', { hasText: '风格强度' }).locator('.knob__val')).toContainText('95');
   // 先撤销滑块修改，再撤销风格修改，同时恢复主题。
   const undo = page.getByRole('button', { name: '撤销' }).first(), redo = page.getByRole('button', { name: '重做' }).first();

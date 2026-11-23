@@ -1,6 +1,25 @@
 /** 浏览器测试的共用步骤。 */
 import { expect } from '@playwright/test';
 
+/**
+ * 像手指一样拖动跟手滑杆（.sl）到目标数值：从圆点中心按下，分几步移到目标位置后松开。
+ * 目标位置按“轨道两端各留半个圆点”的规则计算，所以松手后的数值应与目标完全一致。
+ * @param {import('@playwright/test').Page} page @param {string | import('@playwright/test').Locator} sl @param {number} value
+ */
+export async function slide(page, sl, value, { min = 0, max = 100 } = {}) {
+  const el = typeof sl === 'string' ? page.locator(sl) : sl;
+  await el.scrollIntoViewIfNeeded();
+  const g = await el.evaluate(n => {
+    const r = n.getBoundingClientRect(), t = /** @type {HTMLElement} */ (n.querySelector('.sl__thumb')), tr = t.getBoundingClientRect();
+    return { l: r.left, w: r.width, y: r.top + r.height / 2, tx: tr.left + tr.width / 2, R: t.offsetWidth / 2 };
+  });
+  const x = g.l + g.R + ((value - min) / (max - min)) * (g.w - 2 * g.R);
+  await page.mouse.move(g.tx, g.y);
+  await page.mouse.down();
+  await page.mouse.move(x, g.y, { steps: 8 });
+  await page.mouse.up();
+}
+
 /** 使用全新用户状态打开应用；`intro` 保留首次使用引导。 */
 export async function open(page, { intro = false } = {}) {
   const errors = [];
