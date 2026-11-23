@@ -185,23 +185,24 @@
   "ccd",
   "clay",
   "dragon",
+  "ethereal",
   "faceart",
+  "fantasy",
   "figure",
   "film",
   "gothic",
   "handdrawn",
+  "heritage",
   "hero",
-  "retrocinema",
-  "ethereal",
   "magical",
   "neon",
   "oil",
-  "heritage",
   "pet",
   "pilot",
   "pop",
   "princess",
   "retro",
+  "retrocinema",
   "robot",
   "shonen",
   "shoujo",
@@ -209,8 +210,7 @@
   "tarot",
   "toon3d",
   "vtuber",
-  "woodblock",
-  "fantasy"
+  "woodblock"
  ],
  "stickers": {
   "bamboo": {
@@ -392,6 +392,74 @@
   "mask-fox": {
    "w": 512,
    "h": 483
+  },
+  "heart-gold": {
+   "w": 512,
+   "h": 451
+  },
+  "heart-lilac": {
+   "w": 512,
+   "h": 427
+  },
+  "heart-outline": {
+   "w": 512,
+   "h": 456
+  },
+  "heart-pink": {
+   "w": 512,
+   "h": 445
+  },
+  "heart-red": {
+   "w": 512,
+   "h": 452
+  },
+  "petal-rose": {
+   "w": 504,
+   "h": 512
+  },
+  "twinkle": {
+   "w": 501,
+   "h": 512
+  },
+  "fire-embers": {
+   "w": 384,
+   "h": 384
+  },
+  "fire-puff-1": {
+   "w": 384,
+   "h": 384
+  },
+  "fire-puff-2": {
+   "w": 384,
+   "h": 384
+  },
+  "fire-puff-3": {
+   "w": 384,
+   "h": 384
+  },
+  "fire-puff-4": {
+   "w": 384,
+   "h": 383
+  },
+  "fire-puff-5": {
+   "w": 384,
+   "h": 384
+  },
+  "fire-tongue-1": {
+   "w": 512,
+   "h": 287
+  },
+  "fire-tongue-2": {
+   "w": 512,
+   "h": 215
+  },
+  "fire-tongue-3": {
+   "w": 512,
+   "h": 289
+  },
+  "fire-tongue-4": {
+   "w": 512,
+   "h": 292
   }
  },
  "scenes": [
@@ -407,5 +475,54 @@
   "skyline",
   "snow",
   "studio"
+ ],
+ "covers": [
+  "anime",
+  "arcade",
+  "bighead",
+  "calendar",
+  "ccd",
+  "clay",
+  "dragon",
+  "ethereal",
+  "faceart",
+  "fantasy",
+  "figure",
+  "film",
+  "gothic",
+  "handdrawn",
+  "heritage",
+  "hero",
+  "magical",
+  "neon",
+  "oil",
+  "pet",
+  "pilot",
+  "pop",
+  "princess",
+  "retro",
+  "retrocinema",
+  "robot",
+  "shonen",
+  "shoujo",
+  "storybook",
+  "tarot",
+  "toon3d",
+  "vtuber",
+  "woodblock"
+ ],
+ "decor": [
+  "crest-dragon",
+  "crest-ethereal",
+  "crest-gothic",
+  "crest-heritage",
+  "crest-hero",
+  "crest-magical",
+  "crest-neon",
+  "crest-oil",
+  "crest-princess",
+  "crest-shoujo",
+  "crest-tarot",
+  "crest-vtuber"
  ]
 }
