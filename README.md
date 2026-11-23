@@ -101,6 +101,8 @@ npm test
 
 首次使用时，通过 `npx playwright install chromium` 安装浏览器运行环境。扩展的手机布局和交互测试套件使用 `npm run accept`；安装 WebKit 后，还可以启用受支持的 WebKit 检查。
 
+更新风格封面、主题背景、徽记或特效精灵时，把新图放进被版本控制忽略的 `private/assets-raw/` 对应目录，再运行 `uv run --with numpy python tools/add_art.py` 导入（详见[素材说明](docs/ASSETS.md)）。
+
 开展自动化开发前，请先阅读 [AGENTS.md](AGENTS.md)。本次交接实际执行了哪些检查，请以[验证记录](docs/VALIDATION.md)为准，不要假定所有设备或托管服务都已经测试过。
 
 ## 挑战与交接文档
