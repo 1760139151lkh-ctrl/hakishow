@@ -5,6 +5,7 @@
 import { sticker } from '../core/assets.js';
 import { presetById } from '../presets.js';
 import { packOf, wearOf, ANCHOR } from './effects.js';
+import { createFire, createHearts, FIRE_SPRITES } from './particles.js';
 
 const images = new Map();
 function img(/** @type {string} */ name) {
@@ -22,7 +23,8 @@ function img(/** @type {string} */ name) {
 export function preloadPack(/** @type {string} */ id) {
   const pack = packOf(id);
   for (const set of [pack.wear || [], ...(pack.variants || [])]) for (const w of set) img(w.s);
-  for (const n of ['heart', 'sparkle', 'flame', 'candy', 'paw', 'flower', 'bolt', 'star-freckle']) img(n);
+  for (const n of ['heart', 'sparkle', 'flame', 'candy', 'paw', 'flower', 'bolt', 'star-freckle', 'heart-pink', 'heart-red', 'heart-gold', 'heart-lilac', 'heart-outline', 'twinkle']) img(n);
+  if ((pack.triggers || []).some(t => t.fx === 'fire')) for (const n of FIRE_SPRITES) img(n);
 }
 /** 信息类叠加（抬头显示、直播界面、日期印记等），开启场景背景时仍保留。 */
 const HUD = new Set(['energy', 'hud', 'box', 'fight', 'ccd', 'film', 'stream', 'vhs', 'cinema', 'sparkle', 'flowers', 'pop', 'magic']);
@@ -51,6 +53,8 @@ export function createOverlay(/** @type {HTMLCanvasElement} */ canvas, /** @type
   /** @type {{ kind: string, t0: number, dur: number, side?: number }[]} */ let fxs = [];
   let preset = '', strength = .8, started = performance.now(), scene = false, insetTop = 0, insetBottom = 0, topF = .1, bottomF = .2;
   let pack = packOf(''), variant = 0, popAt = 0, emitAt = 0;
+  // 喷火与爱心雨使用独立的粒子系统（particles.js）。
+  const flames = createFire(name => img(name)), hearts = createHearts(name => img(name));
   const stamp = (() => { const d = new Date(); return `'${String(d.getFullYear()).slice(2)} ${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getDate()).padStart(2, '0')}`; })();
 
   /** @param {import('./tracker.js').Track | null} track @param {number} t @param {(x: number, y: number) => number[]} toCanvas */
@@ -72,6 +76,8 @@ export function createOverlay(/** @type {HTMLCanvasElement} */ canvas, /** @type
     if (!scene || HUD.has(ov)) frame(ov, f, t, W, H, k);
     x.restore();
     runFx(pose, t, W, H, k);
+    if (flames.active) flames.draw(x, t, W, H);
+    if (hearts.active) hearts.draw(x, t, W, H, k, insetTop);
   }
   /** 旧版边框与粒子使用的人脸几何（画布像素）。 */
   function compat(/** @type {ReturnType<typeof poseOf>} */ q) {
@@ -137,12 +143,18 @@ export function createOverlay(/** @type {HTMLCanvasElement} */ canvas, /** @type
     }
     if (!q) { if (kind === 'flash' || kind === 'glitch' || kind === 'ko') fxs.push({ kind, t0: now, dur: kind === 'ko' ? 1100 : 400 }); return; }
     const mouth = q.proj(q.base.mouth), crown = q.proj(q.add(q.base.crown, q.f.Y, .4)), eyes = q.proj(q.f.O);
-    const fwd = [q.f.Z[0] * q.scale * 2.2, q.f.Z[1] * q.scale * 2.2 + q.scale * .5];
     switch (kind) {
-      case 'fire':
-        if (now - emitAt < 30) return; emitAt = now;
-        for (let i = 0; i < 2; i++) sprites.push({ im: img('flame'), x: mouth[0], y: mouth[1], vx: fwd[0] * .03 + (Math.random() - .5) * 2.2 * k, vy: fwd[1] * .03 + (Math.random() * 1.5 + .5) * k, g: -.02 * k, s: q.scale * .35, ds: q.scale * .045, r: (Math.random() - .5) * .6, vr: (Math.random() - .5) * .05, a: 1, da: -.028, t: now });
+      case 'fire': {
+        // 喷射方向：人脸朝向（投影到画面）与下巴方向的合成，转头时火焰随之偏转；前置镜像由投影自动处理。
+        const m3 = q.base.mouth, u = q.scale || 1;
+        const pz = q.proj(q.add(m3, q.f.Z, 1)), py = q.proj(q.add(m3, q.f.Y, -1));
+        let dx = (pz[0] - mouth[0]) / u * 1.6 + (py[0] - mouth[0]) / u * .85, dy = (pz[1] - mouth[1]) / u * 1.6 + (py[1] - mouth[1]) / u * .85;
+        const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
+        const a = q.pt(61), b = q.pt(291);
+        flames.hold({ x: mouth[0], y: mouth[1], dx, dy, u, w: Math.hypot(b[0] - a[0], b[1] - a[1]) }, q.f.expr.mouth, now);
+        hooks.punch?.(.012);
         return;
+      }
       case 'beam': case 'aura':
         if (now - emitAt < 40) return; emitAt = now;
         for (let i = 0; i < 3; i++) { const a = Math.random() * Math.PI * 2, sp = (2 + Math.random() * 3) * k; sprites.push({ im: null, draw: kind === 'beam' ? 'ray' : 'ember', x: kind === 'beam' ? mouth[0] : eyes[0], y: kind === 'beam' ? mouth[1] : eyes[1] + q.scale, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (kind === 'aura' ? 2 * k : 0), g: 0, s: q.scale * (kind === 'beam' ? .25 : .12), ds: q.scale * .01, r: a, vr: 0, a: 1, da: -.035, t: now }); }
@@ -150,7 +162,14 @@ export function createOverlay(/** @type {HTMLCanvasElement} */ canvas, /** @type
         else { const e = fxs.find(e2 => e2.kind === kind); if (e) e.t0 = now; }
         hooks.punch?.(kind === 'beam' ? .025 : .015);
         return;
-      case 'hearts': burstAt(crown, 'heart', 12, q.scale * 1.6, 1); return;
+      case 'hearts': {
+        const u = q.scale || 1;
+        // 出发点在脸的外缘：头顶向上，两侧沿脸颊向外，避免爱心盖住五官。
+        const L = q.pt(234), R = q.pt(454), o = q.proj(q.f.O), side = (/** @type {number[]} */ p) => Math.atan2(p[1] - o[1], p[0] - o[0]);
+        const up = Math.atan2(crown[1] - o[1], crown[0] - o[0]);
+        hearts.fire([{ x: crown[0], y: crown[1], u, dir: up }, { x: L[0], y: L[1], u, dir: side(L) - .35 * Math.sign(Math.cos(side(L))) }, { x: R[0], y: R[1], u, dir: side(R) - .35 * Math.sign(Math.cos(side(R))) }], now);
+        return;
+      }
       case 'likes': for (let i = 0; i < 8; i++) sprites.push({ im: img('heart'), x: W - 40 * k - Math.random() * 30 * k, y: H - insetBottom - 20 * k, vx: (Math.random() - .5) * 1.2 * k, vy: -(2.5 + Math.random() * 2) * k, g: 0, s: 16 * k, ds: .05 * k, r: 0, vr: (Math.random() - .5) * .04, a: 1, da: -.012, t: now + i * 90 }); return;
       case 'sparkle': for (const e of [q.pt(468), q.pt(473)]) burstAt(e, 'sparkle', 5, q.scale * .7, .7); return;
       case 'stars': case 'transformStars': burstAt(crown, 'star', 14, q.scale * 1.8, 1.1); return;
@@ -508,7 +527,7 @@ export function createOverlay(/** @type {HTMLCanvasElement} */ canvas, /** @type
     draw, fire,
     setPreset(/** @type {string} */ id) {
       if (id === preset) return;
-      preset = id; bits = []; sprites = []; fxs = []; started = performance.now(); variant = 0; popAt = performance.now();
+      preset = id; bits = []; sprites = []; fxs = []; started = performance.now(); variant = 0; popAt = performance.now(); flames.reset(); hearts.reset();
       pack = packOf(id);
       if (pack.random && pack.variants?.length) variant = Math.floor(Math.random() * pack.variants.length);
       preloadPack(id);

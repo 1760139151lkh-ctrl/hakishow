@@ -1,6 +1,6 @@
 /** 每个选中的风格都会设置应用的色板、字体、装饰和边框。app.css 中注册的 CSS 颜色属性会在主题之间平滑插值。 */
 import { presetById } from '../presets.js';
-import { bgArt } from './assets.js';
+import { bgArt, decorArt } from './assets.js';
 
 const BRAND = { dark: true, bg: '#0d0a1a', bg2: '#2a1048', surface: '#171226', ink: '#f7f3ff', soft: '#b5a9d6', accent: '#ff3d8b', accent2: '#2fe0ff', onAccent: '#ffffff', glow: 'rgba(255,61,139,.45)', line: 'rgba(247,243,255,.14)', radius: '24px', display: 'round', deco: 'brand', frame: 'brand' };
 let current = '';
@@ -15,6 +15,10 @@ export function applyTheme(id) {
     '--on-accent': t.onAccent, '--glow': t.glow, '--line': t.line, '--art-radius': t.radius };
   for (const [k, v] of Object.entries(vars)) s.setProperty(k, v);
   Object.assign(root.dataset, { theme: p ? p.id : 'brand', dark: String(t.dark), display: t.display, deco: t.deco, frame: t.frame });
+  // 主题顶饰：公主花冠、霓虹灯管、英雄徽章等透明插画，显示在作品画框的上沿。
+  const crest = p ? decorArt('crest-' + p.id) : '';
+  s.setProperty('--crest', crest ? `url("${new URL(crest, location.href).href}")` : 'none');
+  root.dataset.crest = crest ? 'on' : 'off';
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t.bg);
   // 背景：该风格自己的氛围插画，与上一张背景进行交叉淡入淡出
   const layer = document.querySelector('.ambience');

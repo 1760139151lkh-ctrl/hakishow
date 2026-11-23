@@ -13,8 +13,12 @@ const N = 478, NR = OVAL.length;
 /** 顶点布局：pos.xy（裁剪空间）、uv.xy（视频纹理）、skin、lip、blush、spare。 */
 export const STRIDE = 8;
 
-/** @typedef {{ slim: number, chin: number, eyes: number, nose: number, head: number, long: number, wide: number, mouth: number, jaw: number }} Warp */
-export const NO_WARP = /** @type {Warp} */ ({ slim: 0, chin: 0, eyes: 0, nose: 0, head: 0, long: 0, wide: 0, mouth: 0, jaw: 0 });
+/** eyesFx：喜剧特效的五官放大，不参与智能收敛。 @typedef {{ slim: number, chin: number, eyes: number, nose: number, head: number, long: number, wide: number, mouth: number, jaw: number, eyesFx?: number }} Warp */
+export const NO_WARP = /** @type {Warp} */ ({ slim: 0, chin: 0, eyes: 0, nose: 0, head: 0, long: 0, wide: 0, mouth: 0, jaw: 0, eyesFx: 0 });
+const clamp01 = (/** @type {number} */ v, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, v));
+/** 智能美型：眼睛本来就大（睁眼高度 ≥ 瞳距的 17.5%）时几乎不再放大；脸本来就窄（下颌宽 ≤ 1.48 瞳距）时少瘦脸。
+ *  阈值来自六位示例人物的实测（睁眼 0.08–0.17，下颌 1.58–1.74 瞳距）。 */
+const EYE_FULL = .175, EYE_SPAN = .07, JAW_SLIM = 1.48, JAW_SPAN = .25;
 
 /** 由连线表重建三角形，并补齐空洞与过渡环。 @param {{ start: number, end: number }[]} edges */
 export function buildTopology(edges) {
@@ -61,6 +65,9 @@ export function createMesh(topo) {
   const lx = new Float32Array(topo.count), ly = new Float32Array(topo.count), wr = new Float32Array(topo.count);
   /** 顶点的静态属性（皮肤、嘴唇、腮红），在第一帧稳定的人脸上计算一次。 */
   let attrs = /** @type {Float32Array | null} */ (null);
+  /** 本人五官的自然尺度（瞳距单位）：睁眼高度与下颌宽度的慢速平均，眨眼帧不计入。 */
+  const nat = { open: 0, jaw: 0, n: 0 };
+  const adaptive = { eyes: 1, slim: 1, ready: false };
 
   function classify() {
     const a = new Float32Array(topo.count * 3);
@@ -110,6 +117,15 @@ export function createMesh(topo) {
     if (!attrs) attrs = classify();
     // 3. 形变场。侧脸时逐渐减弱，避免拉扯。
     const k = Math.max(0, Math.cos(f.yaw)) ** 2 * Math.max(0, Math.cos(f.pitch * 1.4));
+    // 智能美型：正脸时更新五官自然尺度，再据此收敛大眼与瘦脸。
+    const openNow = ((ly[145] - ly[159]) + (ly[374] - ly[386])) / 2, jawNow = Math.abs(lx[397] - lx[172]);
+    if (k > .6 && openNow > 0) {
+      if (!nat.n) { nat.open = openNow; nat.jaw = jawNow; }
+      else { if (openNow > nat.open * .6) nat.open += (openNow - nat.open) * .04; nat.jaw += (jawNow - nat.jaw) * .04; }
+      nat.n++;
+    }
+    if (nat.n > 0) { adaptive.eyes = clamp01((EYE_FULL - nat.open) / EYE_SPAN, .12); adaptive.slim = clamp01((nat.jaw - JAW_SLIM) / JAW_SPAN, .25); adaptive.ready = true; }
+    const eyesW = w.eyes * adaptive.eyes + (w.eyesFx || 0), slimW = w.slim * adaptive.slim, chinW = w.chin * adaptive.slim;
     const eR = [lx[468], ly[468]], eL = [lx[473], ly[473]], mc = [lx[topo.mouth], ly[topo.mouth]];
     const chinY = ly[152], noseY = ly[4];
     for (let i = 0; i < topo.count; i++) {
@@ -122,15 +138,15 @@ export function createMesh(topo) {
         if (w.long) { y = cy0 + (y - cy0) * (1 + w.long * .35 * r); x *= 1 - w.long * .1 * r; }
         if (w.wide) { x *= 1 + w.wide * .4 * r; y = cy0 + (y - cy0) * (1 - w.wide * .12 * r); }
         // 瘦脸：从颧骨以下向内收，越靠外收得越多。
-        if (w.slim) { const t = sstep(.15, 1.15, y0) * (1 - sstep(1.9, 2.7, y0)); x -= x0 * w.slim * .16 * t * Math.min(1, Math.abs(x0) / .85) * r; }
+        if (slimW) { const t = sstep(.15, 1.15, y0) * (1 - sstep(1.9, 2.7, y0)); x -= x0 * slimW * .16 * t * Math.min(1, Math.abs(x0) / .85) * r; }
         // V 脸与下巴：下颌收窄，下巴略微延长。
-        if (w.chin) { const t = sstep(1.05, chinY, y0); x -= x0 * w.chin * .14 * t * r; y += w.chin * .1 * sstep(1.3, chinY + .1, y0) * r; }
+        if (chinW) { const t = sstep(1.05, chinY, y0); x -= x0 * chinW * .14 * t * r; y += chinW * .1 * sstep(1.3, chinY + .1, y0) * r; }
         if (w.jaw) { const t = sstep(.9, 1.7, y0) * (1 - sstep(2.2, 2.8, y0)); x += x0 * w.jaw * .28 * t * r; }
       }
       // 大眼：以虹膜为中心的平滑放大，半径外为零，不会折叠。
-      if (w.eyes && i < topo.count) for (const [ex, ey] of [eR, eL]) {
+      if (eyesW > .001 && i < topo.count) for (const [ex, ey] of [eR, eL]) {
         const dx = x - ex, dy = (y - ey) * 1.25, d = Math.hypot(dx, dy) / .5;
-        if (d < 1) { const f2 = 1 + w.eyes * .34 * (1 - d * d) ** 2; x = ex + (x - ex) * f2; y = ey + (y - ey) * f2; }
+        if (d < 1) { const f2 = 1 + eyesW * .34 * (1 - d * d) ** 2; x = ex + (x - ex) * f2; y = ey + (y - ey) * f2; }
       }
       if (w.mouth) { const dx = x - mc[0], dy = y - mc[1], d = Math.hypot(dx, dy) / .9; if (d < 1) { const f2 = 1 + w.mouth * .45 * (1 - d * d) ** 2; x = mc[0] + dx * f2; y = mc[1] + dy * f2; } }
       // 瘦鼻：鼻翼向中线收拢。
@@ -145,5 +161,5 @@ export function createMesh(topo) {
     }
     return data;
   }
-  return { update, reset() { attrs = null; }, get data() { return data; } };
+  return { update, reset() { attrs = null; nat.n = 0; adaptive.eyes = adaptive.slim = 1; adaptive.ready = false; }, get data() { return data; }, get adaptive() { return adaptive; } };
 }

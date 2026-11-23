@@ -3,7 +3,7 @@
   "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "HakiShow：面向新加坡及亚太地区的英语创意人像工作室。",
+  "description": "HakiShow：面向新加坡及亚太地区的中文创意人像工作室。",
   "scripts": {
     "build": "node tools/build.mjs",
     "serve": "node tools/serve.mjs",

@@ -245,6 +245,42 @@ img { display: block; max-width: 100%; -webkit-user-drag: none; user-select: non
 .badge { display: inline-flex; align-items: center; justify-content: center; height: 24px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1; background: rgba(0, 0, 0, .5); color: #fff; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 
 /* 滑块 */
+/* ── 新手引导（ui/tour.js）：暗色遮罩中挖出高亮框，配说明气泡。 ── */
+.tour { position: fixed; inset: 0; z-index: 90; }
+.tour__ring { position: fixed; box-shadow: 0 0 0 200vmax rgba(10, 6, 18, .62); border: 2px solid #fff; transition: left .28s var(--ease, ease), top .28s var(--ease, ease), width .28s var(--ease, ease), height .28s var(--ease, ease), border-radius .28s; pointer-events: none; }
+.tour__ring::after { content: ""; position: absolute; inset: -8px; border-radius: inherit; border: 2px solid rgba(255, 255, 255, .55); animation: tourPulse 1.4s ease-out infinite; }
+@keyframes tourPulse { from { opacity: 1; transform: scale(.96); } to { opacity: 0; transform: scale(1.12); } }
+.tour__tip { position: fixed; padding: 14px 16px 12px; border-radius: 18px; background: #fff; color: #1d1626; box-shadow: 0 18px 40px -12px rgba(0, 0, 0, .55); font: 500 14px/1.55 var(--sans); }
+.tour__head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.tour__count { font-size: 12px; font-weight: 800; color: #ff3d8b; letter-spacing: .02em; }
+.tour__skip { font-size: 12.5px; color: #8a8296; padding: 4px 2px; }
+.tour__title { display: block; font-size: 16px; font-weight: 900; margin-bottom: 2px; }
+.tour__text { margin: 0 0 10px; color: #4a4256; }
+.tour__acts { display: flex; justify-content: flex-end; }
+.tour__next { background: #ff3d8b; color: #fff; }
+@media (prefers-reduced-motion: reduce) { .tour__ring, .tour__ring::after { transition: none; animation: none; } }
+/* ── 跟手滑杆（ui/slider.js）：--k 为当前位置 0–1，--m 为默认值位置；--r 为圆点半径，轨道两端各留出 --r，填充终点正好在圆点中心。 ── */
+.sl { --k: .5; --m: 0; --r: 12px; --sl-fill: var(--accent); --sl-rail: color-mix(in srgb, var(--ink) 14%, transparent); --sl-thumb: #fff;
+  position: relative; display: block; height: 36px; touch-action: none; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; outline: none; contain: layout style; }
+.sl__track { position: absolute; left: var(--r); right: var(--r); top: 50%; height: 6px; margin-top: -3px; border-radius: 3px; background: var(--sl-rail); }
+.sl__fill { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--k) * 100%); border-radius: inherit; background: var(--sl-fill); }
+.sl__mark { position: absolute; top: 50%; left: calc(var(--m) * 100%); width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: color-mix(in srgb, var(--ink) 45%, transparent); pointer-events: none; }
+.sl__thumb { position: absolute; top: 50%; left: calc(var(--r) + var(--k) * (100% - 2 * var(--r))); width: calc(2 * var(--r)); height: calc(2 * var(--r)); margin: calc(-1 * var(--r)) 0 0 calc(-1 * var(--r));
+  border-radius: 50%; background: var(--sl-thumb); box-shadow: 0 0 0 3px var(--sl-fill), 0 3px 10px rgba(0, 0, 0, .3); transition: transform .18s var(--spring, ease-out); will-change: left; }
+.sl__tip { position: absolute; bottom: calc(50% + var(--r) + 8px); left: calc(var(--r) + var(--k) * (100% - 2 * var(--r))); transform: translate(-50%, 6px) scale(.6); opacity: 0;
+  min-width: 34px; padding: 4px 8px; border-radius: 10px; background: var(--ink); color: var(--bg, #fff); font: 800 13px/1 var(--sans); text-align: center; font-variant-numeric: tabular-nums;
+  pointer-events: none; transition: opacity .15s, transform .18s var(--spring, ease-out); }
+.sl.is-drag .sl__thumb { transform: scale(1.18); }
+.sl.is-drag .sl__tip { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.sl:not(.is-drag) .sl__fill { transition: width .16s var(--ease, ease-out); }
+.sl:not(.is-drag) .sl__thumb, .sl:not(.is-drag) .sl__tip { transition: left .16s var(--ease, ease-out), transform .18s var(--spring, ease-out), opacity .15s; }
+.sl:focus-visible .sl__thumb { box-shadow: 0 0 0 3px var(--sl-fill), 0 0 0 6px color-mix(in srgb, var(--sl-fill) 35%, transparent); }
+.sl--dark { --r: 10px; --sl-fill: #fff; --sl-rail: rgba(255, 255, 255, .24); --sl-thumb: #fff; }
+.sl--dark .sl__track { height: 3px; margin-top: -1.5px; }
+.sl--dark .sl__thumb { box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
+.sl--dark .sl__mark { background: rgba(255, 255, 255, .7); }
+.sl--dark .sl__tip { background: rgba(255, 255, 255, .95); color: #111; }
+@media (prefers-reduced-motion: reduce) { .sl__thumb, .sl__tip, .sl__fill { transition: none !important; } }
 .range { -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; margin: 0; --v: 50%; }
 .range::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--accent) var(--v), color-mix(in srgb, var(--ink) 14%, transparent) var(--v)); }
 .range::-moz-range-track { height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--ink) 14%, transparent); }
@@ -759,6 +795,7 @@ img { display: block; max-width: 100%; -webkit-user-drag: none; user-select: non
 .warp { position: absolute; inset: 0; z-index: 4; pointer-events: none; display: grid; place-items: center; }
 .warp__wash { position: absolute; left: 50%; bottom: 120px; width: 40px; height: 40px; margin-left: -20px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--accent) 70%, transparent), transparent 70%); animation: wash .9s var(--ease) forwards; }
 .warp__card { position: relative; display: grid; justify-items: center; gap: 6px; padding: 18px 26px; transform: translateY(-40px); animation: card 1.2s var(--ease) forwards; text-align: center; }
+.warp__crest { width: min(260px, 70vw); aspect-ratio: 3 / 1; object-fit: contain; margin-bottom: -8px; filter: drop-shadow(0 8px 16px rgba(0, 0, 0, .35)); animation: pop .6s var(--spring); }
 .warp__deco { width: 64px; height: 64px; object-fit: contain; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .35)); animation: pop .6s var(--spring); }
 .warp__name { font: var(--display-weight) 38px/1.15 var(--display); letter-spacing: var(--display-tracking); color: #fff; text-shadow: 0 2px 0 var(--accent), 0 0 24px var(--glow), 0 4px 20px rgba(0, 0, 0, .45); white-space: nowrap; }
 .warp__hook { display: inline-flex; align-items: center; justify-content: center; height: 26px; font-size: 14px; font-weight: 800; line-height: 1; color: #fff; padding: 0 12px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 80%, transparent); box-shadow: 0 6px 18px -6px var(--glow); white-space: nowrap; }

@@ -18,6 +18,7 @@ import { createUndo } from '../core/undo.js';
 import { stylePanel, tunePanel, detailPanel } from '../studio/panels.js';
 import { partsPanel } from '../studio/parts.js';
 import { chatPanel } from '../studio/chat.js';
+import { tour, toured, touring } from '../ui/tour.js';
 import { T } from '../copy.js';
 
 /** @typedef {import('../core/data.js').Work} Work */
@@ -133,6 +134,8 @@ export function studioScreen() {
     setFormat(/** @type {'avatar' | 'portrait'} */ v) { S.format = v; commit('格式：' + T.format[v]); paintCanvas(); paintCta(); },
     resetParams() { S.params = { ...defaultsOf(/** @type {any} */ (presetById(S.preset))), words: '' }; commit('重置为' + presetById(S.preset)?.name + '的默认设置'); paintAll(); },
     setPicks(/** @type {import('../parts.js').Pick[]} */ picks, /** @type {string} */ label) { S.picks = picks; commit(label); panels.edit?.sync?.(); },
+    /** 对话识别出的局部修改：选中区域（即时预览），再直接应用。 */
+    async applyPicks(/** @type {import('../parts.js').Pick[]} */ picks, /** @type {string} */ said) { S.picks = picks; commit('对话：' + said); panels.edit?.sync?.(); P.parts.repaint?.(); await P.parts.apply(said); },
     /** 创建完整的风格变换。 */
     make,
     /** 局部编辑、对话、变体和角度均使用当前显示的版本。 @param {Partial<import('../core/generate.js').Ask> & { label: string }} o */
@@ -519,6 +522,22 @@ export function studioScreen() {
 
   undo.load(d0.undo);   // 刷新后恢复撤销历史。
   paintUndo();
+  /** 第一次进入精修：手把手引导（换照片 → 挑风格 → 开始创作 → 一句话或点哪改哪 → 微调 → 版本）。 */
+  function guide() {
+    if (toured('studio')) return;
+    setTimeout(() => {
+      if (el.hidden || touring()) return;
+      tour('studio', [
+        { at: () => [...el.querySelectorAll('.frame__hud .hud__btn')].find(b => (b.textContent || '').includes('照片')), title: '第一步：换成你的照片', text: '先用示例照片试试也可以。', round: true },
+        { at: () => toolBtns.style, title: '第二步：挑一个风格', text: '33 种风格，点卡片立刻换；再点一次可以看示例效果。' },
+        { at: () => [...el.querySelectorAll('.cta')].find(b => /** @type {HTMLElement} */ (b).offsetParent !== null), title: '第三步：开始创作', text: '几秒钟就能得到艺术肖像，每一张都会自动保存。' },
+        { at: () => toolBtns.edit, title: '想改哪里，就改哪里', text: '点「修改」后直接点照片上的头发、嘴唇；或者打一句「把头发染成蓝色」，只改那一处，其他保持不变。' },
+        { at: () => toolBtns.tune, title: '微调浓淡与美颜', text: '风格浓淡、像不像本人、美颜程度，都可以拖动滑杆调整。' },
+        { at: () => el.querySelector('.versions'), title: '每一步都能回去', text: '每次修改都会保存成新版本，点缩略图就能回到那一步继续。' },
+      ], { once: true });
+    }, 1100);
+  }
+
   return {
     el, keep: true,
     shown() {
@@ -541,6 +560,7 @@ export function studioScreen() {
       paintAll();
       if (!S.source) useSample();
       if (tool && panels[tool] && !el.dataset.panel) openPanel(tool, true);
+      guide();
     },
     hidden() { if (tool) panels[tool]?.hidden?.(); },
   };

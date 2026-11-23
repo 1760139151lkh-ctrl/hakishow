@@ -194,6 +194,7 @@ export function createRenderer(canvas, o = {}) {
   let fx = { ...NO_WARP, lip: 0, blush: 0, smooth: 0, whiten: 0, rosy: 0 }, fxT = { ...fx };
   let lipCol = [.78, .2, .3], blushCol = [.95, .55, .6];
   let beauty = { ...BEAUTY0 };
+  let comic = false;   // 当前特效包是否为喜剧夸张类（不参与智能美型收敛）
   let strength = .8, mirror = true, split = -1, bypass = false, punch = 0;
   let srcW = 1, srcH = 1, crop = [0, 0, 1, 1];
   /** @type {import('./tracker.js').Track | null} */ let face = null;
@@ -282,6 +283,7 @@ export function createRenderer(canvas, o = {}) {
       const p = presetById(id), pack = packOf(id);
       lookT = { ...ZERO, ...(p?.live || {}), ...(pack.look || {}) };
       fxT = /** @type {any} */ ({ ...NO_WARP, smooth: 0, whiten: 0, rosy: 0, ...(pack.warp || {}), ...(pack.beauty || {}), lip: pack.makeup?.lip?.[3] || 0, blush: pack.makeup?.blush?.[3] || 0 });
+      comic = !!pack.comic;
       if (pack.makeup?.lip) lipCol = pack.makeup.lip.slice(0, 3);
       if (pack.makeup?.blush) blushCol = pack.makeup.blush.slice(0, 3);
     },
@@ -307,7 +309,16 @@ export function createRenderer(canvas, o = {}) {
       if (mode !== 2 || !src || src === bgWanted) return;
       bgWanted = src; bgReady = false;
       const im = new Image(); im.decoding = 'async';
-      im.onload = () => { if (bgWanted !== src) return; gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, bgTex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im); bgAspect = im.naturalWidth / im.naturalHeight; bgReady = true; };
+      // 先在后台线程解码成位图再上传纹理，避免切换场景时主线程解码造成掉帧。
+      const upload = (/** @type {TexImageSource & { close?: () => void }} */ s, /** @type {number} */ w, /** @type {number} */ h) => {
+        if (bgWanted === src) { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, bgTex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, s); bgAspect = w / h; bgReady = true; }
+        s.close?.();
+      };
+      im.onload = () => {
+        if (bgWanted !== src) return;
+        if (typeof createImageBitmap === 'function') createImageBitmap(im).then(b => upload(b, b.width, b.height), () => upload(im, im.naturalWidth, im.naturalHeight));
+        else upload(im, im.naturalWidth, im.naturalHeight);
+      };
       im.src = src;
     },
     get background() { return bgMode; },
@@ -327,6 +338,8 @@ export function createRenderer(canvas, o = {}) {
     /** 头饰需要的额外头顶空间（以人脸高度为单位，0 表示没有头饰）。 */
     setHeadroom(/** @type {number} */ h) { headroom = Math.max(0, Math.min(1, +h || 0)); },
     get crop() { return crop; },
+    /** 智能美型系数：按跟踪到的五官自动收敛大眼与瘦脸（0–1，1 表示不收敛）。 */
+    get adaptive() { return mesh ? mesh.adaptive : { eyes: 1, slim: 1, ready: false }; },
     get mirror() { return mirror; },
     get size() { return [srcW, srcH]; },
     toCanvas,
@@ -341,9 +354,10 @@ export function createRenderer(canvas, o = {}) {
       size(T.warp, W, H); size(T.comp, W, H); size(T.feat, W / 2, H / 2); size(T.h1, W / 2, H / 2); size(T.h2, W / 2, H / 2); size(T.small, W / 8, H / 8);
       writeBase();
       const s = strength;
+      // 美颜与写实特效的美型按五官自动收敛（智能美型）；喜剧特效的夸张放大单独计入，不做收敛。
       const warp = {
-        slim: beauty.slim + fx.slim * s, chin: beauty.chin + fx.chin * s, eyes: beauty.eyes + fx.eyes * s, nose: beauty.nose + fx.nose * s,
-        head: fx.head * s, long: fx.long * s, wide: fx.wide * s, mouth: fx.mouth * s, jaw: fx.jaw * s,
+        slim: beauty.slim + fx.slim * s, chin: beauty.chin + fx.chin * s, eyes: beauty.eyes + (comic ? 0 : fx.eyes * s), nose: beauty.nose + fx.nose * s,
+        head: fx.head * s, long: fx.long * s, wide: fx.wide * s, mouth: fx.mouth * s, jaw: fx.jaw * s, eyesFx: comic ? fx.eyes * s : 0,
       };
       meshOn = !!(face && mesh && topo);
       if (meshOn) { gl.bindBuffer(gl.ARRAY_BUFFER, meshBuf); gl.bufferData(gl.ARRAY_BUFFER, /** @type {any} */ (mesh).update(face, warp, toClip), gl.DYNAMIC_DRAW); }

@@ -24,14 +24,17 @@ import { LOOKS, LOOK_ORDER } from '../live/looks.js';
 import { play, unlock, isMuted, setMuted } from '../live/sound.js';
 import { styleDot } from '../ui/parts.js';
 import { buzz } from '../ui/fx.js';
+import { slider } from '../ui/slider.js';
+import { tour, toured, touring } from '../ui/tour.js';
 import { openExamples } from '../ui/examples.js';
 import { sheet, focusSoon } from '../ui/sheet.js';
 import { T } from '../copy.js';
 
-/** 美颜与美型项目：默认值偏自然。 */
+/** 美颜与美型项目：默认值偏自然。大眼默认关闭——本来眼睛就大的人放大后反而失真；
+ *  美型幅度还会按每个人的五官自动收敛（见 mesh.js 的“智能美型”）。 */
 const BEAUTY_ITEMS = [
-  { id: 'smooth', label: '磨皮', ico: 'drop', tab: 'skin', def: .45 }, { id: 'whiten', label: '美白', ico: 'sun', tab: 'skin', def: .25 }, { id: 'rosy', label: '红润', ico: 'heart', tab: 'skin', def: .2 },
-  { id: 'slim', label: '瘦脸', ico: 'faceSlim', tab: 'shape', def: .3 }, { id: 'eyes', label: '大眼', ico: 'eye', tab: 'shape', def: .25 }, { id: 'chin', label: 'V 脸', ico: 'chin', tab: 'shape', def: .15 }, { id: 'nose', label: '瘦鼻', ico: 'nose', tab: 'shape', def: .15 },
+  { id: 'smooth', label: '磨皮', ico: 'drop', tab: 'skin', def: .35 }, { id: 'whiten', label: '美白', ico: 'sun', tab: 'skin', def: .15 }, { id: 'rosy', label: '红润', ico: 'heart', tab: 'skin', def: .15 },
+  { id: 'slim', label: '瘦脸', ico: 'faceSlim', tab: 'shape', def: .12 }, { id: 'eyes', label: '大眼', ico: 'eye', tab: 'shape', def: 0 }, { id: 'chin', label: 'V 脸', ico: 'chin', tab: 'shape', def: .06 }, { id: 'nose', label: '瘦鼻', ico: 'nose', tab: 'shape', def: .05 },
 ];
 const BG_MODES = [['auto', '跟随特效'], ['none', '原景'], ['blur', '虚化'], ['scene', '场景']];
 /** 搜索用的特效关键词。 */
@@ -112,18 +115,20 @@ export function liveScreen() {
   const ptabs = h('div.bp__tabs', { role: 'tablist' });
   const pitems = h('div.bp__items');
   const pval = h('b.bp__val');
-  const prange = /** @type {HTMLInputElement} */ (h('input.bp__range', { type: 'range', min: '0', max: '100', step: '1', 'aria-label': '强度' }));
-  const pslider = h('label.bp__slider', null, prange, pval);
+  // 跟手滑杆：圆点始终在手指下方；轨道上的小点标出当前项目的默认值，拖过时轻微吸附。
+  const prange = slider({ value: 50, label: '强度', tone: 'dark',
+    onInput: n => {
+      const v = n / 100;
+      pval.textContent = String(n);
+      if (ptab === 'look') { renderer?.setLook(lookId, v); setPref('lookAmt', v); }
+      else if (ptab === 'fx') { strength = v; renderer?.setStrength(v); overlay.setStrength(v); }
+      else { beauty[pitem] = v; renderer?.setBeauty({ [pitem]: v }); }
+      paintItems(true);
+    },
+    onChange: () => { setPref('beauty', beauty); setPref('liveStrength', strength); } });
+  const pslider = h('div.bp__slider', null, prange.el, pval);
   const panel = h('section.bp', { hidden: true, 'aria-label': '美颜与滤镜' }, pslider, pitems, ptabs);
-  prange.addEventListener('input', () => {
-    const v = Number(prange.value) / 100;
-    prange.style.setProperty('--v', prange.value + '%'); pval.textContent = prange.value;
-    if (ptab === 'look') { renderer?.setLook(lookId, v); setPref('lookAmt', v); }
-    else if (ptab === 'fx') { strength = v; renderer?.setStrength(v); overlay.setStrength(v); }
-    else { beauty[pitem] = v; renderer?.setBeauty({ [pitem]: v }); }
-    paintItems(true);
-  });
-  prange.addEventListener('change', () => { setPref('beauty', beauty); setPref('liveStrength', strength); });
+  const showAmt = (/** @type {number} */ n, /** @type {number | null} */ mark) => { prange.set(n); prange.setMark(mark); pval.textContent = String(Math.round(n)); };
   function paintPanel() {
     const tabs = [['skin', '美颜'], ['shape', '美型'], ['look', '滤镜'], ['fx', '特效']];
     ptabs.replaceChildren(...tabs.map(([id, label]) => h('button.bp__tab', { type: 'button', role: 'tab', 'aria-selected': String(ptab === id), onclick: () => { ptab = id; pitem = id === 'skin' ? 'smooth' : id === 'shape' ? 'slim' : pitem; paintPanel(); } }, h('span', null, label))));
@@ -132,7 +137,7 @@ export function liveScreen() {
   function paintItems(valuesOnly = false) {
     if (ptab === 'look' || ptab === 'fx') {
       const amt = ptab === 'look' ? pref('lookAmt', 1) : strength;
-      prange.value = String(Math.round(amt * 100)); prange.style.setProperty('--v', prange.value + '%'); pval.textContent = prange.value;
+      showAmt(Math.round(amt * 100), ptab === 'look' ? 100 : 85);
       pslider.hidden = ptab === 'look' && lookId === 'none';
       if (valuesOnly) return;
       if (ptab === 'look') pitems.replaceChildren(...LOOK_ORDER.map(id => h('button.bp__look', { type: 'button', 'aria-pressed': String(lookId === id), data: { look: id }, onclick: () => { lookId = id; setPref('look', id); renderer?.setLook(id, pref('lookAmt', 1)); paintItems(); } }, h('span.bp__swatch'), h('span.bp__name', null, LOOKS[id].name))));
@@ -143,7 +148,7 @@ export function liveScreen() {
     const items = BEAUTY_ITEMS.filter(b => b.tab === ptab);
     if (!items.some(b => b.id === pitem)) pitem = items[0].id;
     const v = Math.round((beauty[pitem] || 0) * 100);
-    prange.value = String(v); prange.style.setProperty('--v', v + '%'); pval.textContent = String(v); pslider.hidden = false;
+    showAmt(v, Math.round((BEAUTY_ITEMS.find(b => b.id === pitem)?.def || 0) * 100)); pslider.hidden = false;
     if (valuesOnly) { pitems.querySelectorAll('.bp__item').forEach(b => b.classList.toggle('is-on', (beauty[/** @type {HTMLElement} */ (b).dataset.item || ''] || 0) > .005)); return; }
     pitems.replaceChildren(...items.map(b => h('button.bp__item', { type: 'button', 'aria-pressed': String(pitem === b.id), class: (beauty[b.id] || 0) > .005 ? 'is-on' : '', data: { item: b.id }, onclick: () => { pitem = b.id; paintItems(); } },
       h('span.bp__ico', { html: icon(/** @type {any} */ (b.ico)) }), h('span.bp__name', null, b.label))),
@@ -176,10 +181,14 @@ export function liveScreen() {
     requestAnimationFrame(() => /** @type {HTMLElement | null} */ (catBtns.querySelector('[aria-selected="true"]'))?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: reduced ? 'auto' : 'smooth' }));
   }
 
-  // ── 轮播：原生滚动吸附 + 拾取器式缩放 ──
+  // ── 轮播：原生滚动吸附 + 拾取器式滚轮 ──
+  // 滚动时每帧只读一次 scrollLeft，圆点中心位置提前缓存（填充与尺寸变化时重算），只写 transform 与 opacity，不触发重排。
   /** @type {HTMLElement[]} */ let dots = [];
-  let previewIdx = -1, settleTimer = 0, scrollRaf = 0, settledId = '';
-  const centerOf = (/** @type {HTMLElement} */ d) => d.offsetLeft + d.offsetWidth / 2 - track2.clientWidth / 2;
+  /** @type {number[]} */ let centers = [];
+  let previewIdx = -1, settleTimer = 0, scrollRaf = 0, settledId = '', trackW = 0;
+  const measure = () => { trackW = track2.clientWidth; centers = dots.map(d => d.offsetLeft + d.offsetWidth / 2); };
+  const centerOf = (/** @type {HTMLElement} */ d) => { const i = dots.indexOf(d); return (centers[i] ?? d.offsetLeft + d.offsetWidth / 2) - (trackW || track2.clientWidth) / 2; };
+  new ResizeObserver(() => { measure(); shape(); }).observe(track2);
   function fill(animate = false) {
     const list = inCategory(cat);
     dots = list.map(p => styleDot(p.id));
@@ -190,30 +199,32 @@ export function liveScreen() {
     }));
     if (!list.some(p => p.id === current)) current = list[0].id;
     if (animate && !reduced) rail.animate([{ opacity: 0, transform: 'translateX(24px)' }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.2,.8,.2,1)' });
-    requestAnimationFrame(() => { scrollToIdx(dots.findIndex(d => d.dataset.style === current), false); commit(current, animate); });
+    requestAnimationFrame(() => { measure(); scrollToIdx(dots.findIndex(d => d.dataset.style === current), false); commit(current, animate); });
   }
   function scrollToIdx(/** @type {number} */ i, /** @type {boolean} */ smooth) {
     const d = dots[Math.max(0, i)]; if (!d) return;
     track2.scrollTo({ left: centerOf(d), behavior: smooth && !reduced ? 'smooth' : 'auto' });
     if (!smooth) shape();
   }
-  /** 每帧根据离中心的距离缩放圆点，并即时预览中心的特效。 */
+  /** 每帧根据离中心的距离缩放、侧转圆点（像 iPhone 的滚轮拾取器），并即时预览中心的特效。 */
   function shape() {
-    const mid = track2.scrollLeft + track2.clientWidth / 2;
+    if (centers.length !== dots.length) measure();
+    const mid = track2.scrollLeft + trackW / 2;
     let best = 0, bestD = Infinity;
-    dots.forEach((d, i) => {
-      const c = d.offsetLeft + d.offsetWidth / 2, dist = Math.abs(c - mid);
-      if (dist < bestD) { bestD = dist; best = i; }
-      const k = Math.min(1, dist / 160);
-      d.style.transform = `scale(${(1 - .2 * k).toFixed(3)})`;
-      d.style.opacity = dist < 20 ? '0' : String(1 - .35 * k);
-    });
+    for (let i = 0; i < dots.length; i++) {
+      const dist = centers[i] - mid, ad = Math.abs(dist);
+      if (ad < bestD) { bestD = ad; best = i; }
+      const k = Math.min(1, ad / 170);
+      dots[i].style.transform = `perspective(420px) rotateY(${(-Math.sign(dist) * k * 26).toFixed(1)}deg) scale(${(1 - .22 * k).toFixed(3)})`;
+      // 中心的圆点被快门挡住：靠近中心时平滑淡出，而不是突然消失。
+      dots[i].style.opacity = (Math.min(1, Math.max(0, (ad - 8) / 26)) * (1 - .35 * k)).toFixed(3);
+    }
     if (best !== previewIdx) {
       const first = previewIdx < 0;
       previewIdx = best;
       const id = dots[best]?.dataset.style || current;
       if (!first) { play('tick'); buzz(4); }
-      preview(id);
+      preview(id, true);
     }
   }
   track2.addEventListener('scroll', () => {
@@ -224,11 +235,12 @@ export function liveScreen() {
   function settle() { cancelAnimationFrame(scrollRaf); shape(); const id = dots[previewIdx]?.dataset.style; if (id) commit(id, true); }
   /** 带头顶挂件（王冠、发箍、帽子、耳朵）的特效包需要更多头顶空间，避免挂件被顶栏遮挡或超出画面。 */
   const headroomOf = (/** @type {string} */ id) => { const pk = packOf(id); return [...(pk.wear || []), ...(pk.variants || []).flat()].some(w => w.at === 'crown') ? .6 : 0; };
-  /** 滑动中：只切换渲染参数与名称，不改主题，保证跟手。 */
-  function preview(/** @type {string} */ id) {
+  /** 滑动中（sliding）：只切换渲染参数与名称，不改主题、不换场景背景（大图解码留到停稳后），保证跟手。 */
+  function preview(/** @type {string} */ id, sliding = false) {
     const p = presetById(id); if (!p) return;
     current = id;
-    renderer?.setPreset(id); renderer?.setHeadroom(headroomOf(id)); overlay.setPreset(id); applyBg();
+    renderer?.setPreset(id); renderer?.setHeadroom(headroomOf(id)); overlay.setPreset(id);
+    if (!sliding) applyBg();
     shutterImg.src = styleIcon(id);
     nameEl.textContent = p.name; hintEl.textContent = packOf(id).hint || p.line;
   }
@@ -481,7 +493,21 @@ export function liveScreen() {
     finally { shooting = false; shutter.classList.remove('is-busy'); }
   }
 
-  function showCoach() { if (!pref('coached', false)) { coach.hidden = false; setTimeout(dismissCoach, 7000); } }
+  /** 第一次打开相机：手把手引导六步（转盘、玩法提示、美颜、背景、快门、精修）。看过以后不再自动出现。 */
+  function showCoach() {
+    if (toured('live')) return;
+    setTimeout(() => {
+      if (el.hidden || touring()) return;
+      tour('live', [
+        { at: () => track2, title: '换特效：左右滑动转盘', text: '中间那个就是正在用的特效，滑到哪个就立刻预览哪个。' },
+        { at: () => label, title: '照着提示做动作', text: '这里写着玩法：比如「张大嘴巴，喷出火焰」「微笑，满屏爱心飘起来」。' },
+        { at: () => el.querySelector('[data-tool="beauty"]'), title: '美颜：默认就是自然美', text: '不会乱放大眼睛。想调哪一项就点开它，拖动滑杆，圆点会一直跟着你的手指。', round: true },
+        { at: () => el.querySelector('[data-tool="bg"]'), title: '换背景', text: '可以把背景虚化，也可以换成和特效配套的场景。', round: true },
+        { at: () => shutter, title: '拍照', text: '点一下快门就拍好了；按住画面可以对比原图。', round: true },
+        { at: () => [...el.querySelectorAll('.modes__opt')].find(b => b.textContent === '精修'), title: '还想更好看？去「精修」', text: '用照片生成艺术肖像，还能一句话改发色、换口红。' },
+      ], { once: true, onDone: () => setPref('coached', true) });
+    }, 900);
+  }
   function dismissCoach() { if (!coach.hidden) { coach.hidden = true; setPref('coached', true); } }
 
   async function paintGalleryThumb() {

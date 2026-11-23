@@ -5,10 +5,13 @@ import { isRunning, retry, watch } from '../core/generate.js';
 import { prepare } from '../core/image.js';
 import { etaText, opLabel } from '../ui/parts.js';
 import { presetById } from '../presets.js';
+import { intentOf } from './intent.js';
+import { labelOf } from '../parts.js';
 
 /** @typedef {import('../core/data.js').Work} Work */
 const ROLES = /** @type {const} */ ([['look', '参考造型'], ['style', '参考风格'], ['backdrop', '背景布景'], ['with', '添加主体']]);
-const STARTERS = ['将背景改为海边日落', '添加几颗闪亮的星星', '给我一个灿烂的笑容', '将服装改成白色西装', '让头发长一点', '让整张图片更加梦幻', '在我的肩膀上加一只小猫', '使用霓虹夜景'];
+/** 起步建议：一半是整图编辑，一半会被识别成精准的局部修改（头发、口红、腮红）。 */
+const STARTERS = ['把头发染成冰蓝色', '口红换成草莓红，水亮一点', '加一点蜜桃腮红', '将背景改为海边日落', '添加几颗闪亮的星星', '给我一个灿烂的笑容', '将服装改成白色西装', '在我的肩膀上加一只小猫', '剪个齐肩长波波'];
 
 export function chatPanel(/** @type {any} */ ctx) {
   /** @type {{ blob: Blob, url: string, role: string } | null} */ let ref = null;
@@ -125,6 +128,15 @@ export function chatPanel(/** @type {any} */ ctx) {
     field.value = ''; grow(); saveDraft('chat', { text: '' }); paintSend();
     if (ref) { URL.revokeObjectURL(ref.url); ref = null; paintRef(); }
     field.blur();
+    // 一句话里如果说的是头发、口红、腮红、刘海、眉毛这些部位，就转成局部修改：只改这些区域，其余像素保持不变。
+    const it = refs.length ? null : intentOf(words);
+    if (it?.kind === 'style') { ctx.pickStyle(it.id); toast('已切换到「' + (presetById(it.id)?.name || '') + '」，点「开始创作」生成新肖像。', { tone: 'ok' }); return; }
+    if (it?.kind === 'region' && ctx.applyPicks) {
+      toast('听懂了：只修改' + it.picks.map(k => labelOf(k)).join('、') + '，其他部分保持不变。', { tone: 'ok', ms: 3200 });
+      await ctx.applyPicks(it.picks, words);
+      starters = []; paintThread();
+      return;
+    }
     const w = await ctx.ask({ op: 'edit', text, say: words, label: '对话：' + (words.length > 14 ? words.slice(0, 14) + '…' : words), refs });
     if (!w) { field.value = words; grow(); paintSend(); return; }
     starters = [];

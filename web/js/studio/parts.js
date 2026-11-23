@@ -252,7 +252,7 @@ export function partsPanel(/** @type {any} */ ctx) {
   }
 
   // ── 创建编辑后的版本 ──
-  async function apply() {
+  async function apply(said = '') {
     const w = ctx.shownWork(), styled = !!w && w.state === 'done';
     const img = ctx.shownImage();
     if (active === 'paint') {
@@ -285,7 +285,7 @@ export function partsPanel(/** @type {any} */ ctx) {
     if (!pins.length) { paintFoot(); return; }
     const labels = applied.map(k => labelOf(k));
     const text = regionText(applied, { styled }) + (ref ? '从参考图片中提取这些部位的造型（剪裁、颜色、妆容），绝不采用参考图的人脸或人物身份。' : '');
-    await ctx.ask({ op: 'region', pins, text, parts: labels, label: '局部编辑：' + labels.join(', '), ...(ref ? { refs: [{ blob: ref.blob, role: 'look', label: '参考图片' }] } : {}) });
+    await ctx.ask({ op: 'region', pins, text, parts: labels, label: '局部编辑：' + labels.join(', '), ...(said ? { say: said } : {}), ...(ref ? { refs: [{ blob: ref.blob, role: 'look', label: '参考图片' }] } : {}) });
     active = ''; paint(); loop();
   }
 
@@ -309,6 +309,8 @@ export function partsPanel(/** @type {any} */ ctx) {
     },
     repaint() { if (!open) return; paint(); readImage().then(() => { paint(); loop(); }); },
     paintCta() { if (open) paintFoot(); },
+    /** 对话识别出局部修改后直接应用（said：用户原话，显示在对话记录里）。 */
+    apply: (/** @type {string} */ said = '') => apply(said),
     fit() { brush.fit(); },
     overlay() { if (open) paintOverlay(); },
   };

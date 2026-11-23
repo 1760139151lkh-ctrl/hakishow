@@ -1,6 +1,6 @@
 /** 遵循减少动态效果偏好的沉浸动画：warp——切换风格时，从快门处展开风格标题卡片和标记；reveal——光线扫过完成图片，在预览上展示最终结果；burst——完成时迸发风格专属物件，例如缎带、爱心、能量闪电和灯笼；buzz——在支持的手机上轻微振动。 */
 import { h, reduced } from '../core/dom.js';
-import { sticker } from '../core/assets.js';
+import { sticker, decorArt } from '../core/assets.js';
 import { presetById } from '../presets.js';
 
 /** presets.js 中的风格标记显示在标题卡片和完成时的爆发动画中。 */
@@ -12,10 +12,11 @@ export function warp(host, id) {
   const p = presetById(id); if (!p) return;
   warpEl?.remove();
   if (reduced) return;
-  const src = emblem(id, 0);
+  // 有主题顶饰（公主花冠、霓虹灯管、英雄徽章……）时用顶饰代替小贴纸，标题卡更有仪式感。
+  const crest = decorArt('crest-' + id), src = crest || emblem(id, 0);
   warpEl = h('div.warp', { 'aria-hidden': 'true' },
     h('span.warp__wash'),
-    h('div.warp__card', null, src ? h('img.warp__deco', { src, alt: '' }) : null, h('b.warp__name', null, p.name), h('span.warp__hook', null, p.hook)));
+    h('div.warp__card', null, src ? h(crest ? 'img.warp__crest' : 'img.warp__deco', { src, alt: '' }) : null, h('b.warp__name', null, p.name), h('span.warp__hook', null, p.hook)));
   host.append(warpEl);
   const mine = warpEl;
   setTimeout(() => mine.remove(), 1300);

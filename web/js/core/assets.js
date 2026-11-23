@@ -2,15 +2,15 @@
 import { asset } from './dom.js';
 import { presetById } from '../presets.js';
 
-/** @type {{ people: string[], styles: Record<string, string[]>, bg: string[], stickers: Record<string, { w: number, h: number }> }} */
-let manifest = { people: [], styles: {}, bg: [], stickers: {} };
+/** @type {{ people: string[], styles: Record<string, string[]>, bg: string[], stickers: Record<string, { w: number, h: number }>, covers?: string[], decor?: string[] }} */
+let manifest = { people: [], styles: {}, bg: [], stickers: {}, covers: [], decor: [] };
 
 export async function loadManifest() {
   try {
     const inline = document.getElementById('asset-manifest');
     manifest = inline ? JSON.parse(inline.textContent || '{}') : await fetch(asset('img/manifest.json')).then(r => r.json());
   } catch { /* 清单不可用时退回约定路径。 */ }
-  manifest.people ||= []; manifest.styles ||= {}; manifest.bg ||= []; manifest.stickers ||= {};
+  manifest.people ||= []; manifest.styles ||= {}; manifest.bg ||= []; manifest.stickers ||= {}; manifest.covers ||= []; manifest.decor ||= [];
 }
 
 /** 某个风格的示例肖像。尺寸：'' 为完整图片，'m' 为卡片，'t' 为缩略图。 */
@@ -23,14 +23,19 @@ export const sticker = (/** @type {string} */ name) => (manifest.stickers[name] 
 export const stickerSize = (/** @type {string} */ name) => manifest.stickers[name] || { w: 1, h: 1 };
 export const hasArt = (/** @type {string} */ preset, /** @type {string} */ who) => (manifest.styles[preset] || []).includes(sitter(who));
 
-/** 风格封面：优先使用主推肖像，回退时使用美。 */
+/** 是否有方形风格封面：同一位示例人物美在 33 种风格中的头像，双眼位于同一高度，切换时脸不跳动。 */
+export const hasCover = (/** @type {string} */ preset) => !!manifest.covers?.includes(preset);
+/** 风格封面：卡片（'m'）与缩略图（'t'）优先使用方形封面；完整尺寸（''）使用美的竖幅风格肖像。 */
 export function cover(/** @type {string} */ preset, size = 'm') {
+  if (size && hasCover(preset)) return { art: asset(`img/covers/${preset}${size === 't' ? '-t' : ''}.webp`), before: personArt('mei', 'm'), who: 'mei' };
   const p = presetById(preset);
-  const who = p && hasArt(preset, p.hero) ? p.hero : 'mei';
+  const who = hasArt(preset, 'mei') ? 'mei' : p && hasArt(preset, p.hero) ? p.hero : 'mei';
   return { art: styleArt(preset, who, size), before: personArt(who, 'm'), who };
 }
 /** 引导页与轮播图标统一使用美，展示同一个人在三十多种艺术世界中的形象。 */
-export const icon = (/** @type {string} */ preset) => styleArt(preset, hasArt(preset, 'mei') ? 'mei' : (presetById(preset)?.hero || 'mei'), 't');
+export const icon = (/** @type {string} */ preset) => hasCover(preset) ? asset(`img/covers/${preset}-t.webp`) : styleArt(preset, hasArt(preset, 'mei') ? 'mei' : (presetById(preset)?.hero || 'mei'), 't');
+/** 主题装饰插画（透明背景），没有时返回空字符串。 */
+export const decorArt = (/** @type {string} */ name) => (manifest.decor?.includes(name) ? asset(`img/decor/${name}.webp`) : '');
 export const samples = () => manifest.people.length ? manifest.people : ['mei', 'aiman', 'priya', 'jun', 'nur', 'kai'];
 /** 列出此风格具有示例作品的人物。 */
 export const examplesOf = (/** @type {string} */ preset) => manifest.people.filter(who => hasArt(preset, who));

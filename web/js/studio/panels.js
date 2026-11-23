@@ -1,6 +1,6 @@
 /** 照片工作室的三个基础面板：风格——分类胶囊按钮与三列示例网格，加上通过简短描述创建的自定义风格；调整——风格强度、相似度、细节、美颜、格式和画质，并提供重置；细节——配饰、灯光、氛围、边框和额外文字要求，输入框保持在键盘上方。每次改动都使用 ctx.commit，确保可以撤销。 */
 import { h, icon, toast, chooseFile } from '../core/dom.js';
-import { presetById, inCategory, categories, toggleDetail, DETAIL_GROUPS, KNOBS } from '../presets.js';
+import { presetById, inCategory, categories, toggleDetail, DETAIL_GROUPS, KNOBS, defaultsOf } from '../presets.js';
 import { cover } from '../core/assets.js';
 import { isFav, toggleFav, pref, setPref, saveStyle, addSource, ensureUploaded } from '../core/data.js';
 import { studio, inventStyle } from '../core/api.js';
@@ -8,6 +8,7 @@ import { prepare } from '../core/image.js';
 import { applyTheme } from '../core/theme.js';
 import { sheet, focusSoon } from '../ui/sheet.js';
 import { etaText } from '../ui/parts.js';
+import { slider } from '../ui/slider.js';
 import { T, level } from '../copy.js';
 
 /** 面板的“开始创作”操作，与收起状态下的主操作一致。 */
@@ -101,13 +102,11 @@ export function tunePanel(/** @type {any} */ ctx) {
     const P = ctx.S.params;
     const knob = (/** @type {any} */ k) => {
       const val = h('b.knob__val', null, level(P[k.id]) + ' · ' + P[k.id]);
-      const r = /** @type {HTMLInputElement} */ (h('input.range', { type: 'range', min: '0', max: '100', step: '5', value: String(P[k.id]), 'aria-label': k.label }));
-      r.style.setProperty('--v', P[k.id] + '%');
-      let from = P[k.id];
-      r.addEventListener('pointerdown', () => { from = P[k.id]; });
-      r.addEventListener('input', () => { val.textContent = level(Number(r.value)) + ' · ' + r.value; r.style.setProperty('--v', r.value + '%'); P[k.id] = Number(r.value); });
-      r.addEventListener('change', () => ctx.setParams({ [k.id]: Number(r.value) }, k.label + ' ' + from + '→' + r.value));
-      return h('label.knob', null, h('span.knob__head', null, h('span.knob__name', null, k.label), val), r, h('span.knob__ends', null, h('span', null, k.low), h('span', null, k.high)));
+      const base = defaultsOf(/** @type {any} */ (presetById(ctx.S.preset)))?.[k.id];
+      const r = slider({ value: P[k.id], step: 5, label: k.label, mark: typeof base === 'number' ? base : null,
+        onInput: v => { val.textContent = level(v) + ' · ' + v; P[k.id] = v; },
+        onChange: (v, from) => ctx.setParams({ [k.id]: v }, k.label + ' ' + from + '→' + v) });
+      return h('div.knob', null, h('span.knob__head', null, h('span.knob__name', null, k.label), val), r.el, h('span.knob__ends', null, h('span', null, k.low), h('span', null, k.high)));
     };
     const segOf = (/** @type {string} */ label, /** @type {[string, string][]} */ opts, /** @type {string} */ now, /** @type {(v: string) => void} */ set) => h('div.opt', null, h('span.opt__name', null, label),
       h('div.seg.seg--sm', { role: 'radiogroup', 'aria-label': label }, ...opts.map(([v, t]) => h('button.seg__opt', { type: 'button', role: 'radio', 'aria-checked': String(v === now), onclick: () => { set(v); paint(); } }, t))));

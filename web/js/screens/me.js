@@ -7,6 +7,7 @@ import { works, favs, pref, setPref, resultUrl, switchAccount, sync, exportBacku
 import { download } from '../core/image.js';
 import { persisted, durable } from '../core/db.js';
 import { topBar } from '../ui/parts.js';
+import { resetTours } from '../ui/tour.js';
 import { sheet, focusSoon } from '../ui/sheet.js';
 import { T } from '../copy.js';
 
@@ -43,6 +44,7 @@ export function meScreen() {
         h('button.btn.btn--ghost.btn--sm', { type: 'button', onclick: () => restore() }, '导入'))),
       row('shield', '存储', h('span.me__note', null, !durable ? '本地存储不可用，请在关闭此页面前导出作品。' : safe ? '已启用持久存储，防止作品被自动清理。' : studio.live ? '此设备 + 私人空间同步' : '保存在此设备上')),
       h('button.me__row', { type: 'button', onclick: () => { setPref('onboarded', false); go('live'); location.reload(); } }, h('span.me__rowico', { html: icon('sparkle') }), h('span.me__rowname', null, '重新查看介绍'), h('span', { html: icon('chevron') })),
+      h('button.me__row', { type: 'button', onclick: () => { resetTours(); setPref('coached', false); toast('新手教程已重新打开：跟着高亮提示一步一步来。', { tone: 'ok' }); go('live'); } }, h('span.me__rowico', { html: icon('hand') }), h('span.me__rowname', null, '新手教程'), h('span', { html: icon('chevron') })),
       h('button.me__row', { type: 'button', onclick: () => privacy() }, h('span.me__rowico', { html: icon('lock') }), h('span.me__rowname', null, '隐私'), h('span', { html: icon('chevron') })));
     body.replaceChildren(...[card, authActs, stats, rows, h('p.me__foot', null, T.brand + ' · ' + T.slogan)].filter(Boolean));
   }

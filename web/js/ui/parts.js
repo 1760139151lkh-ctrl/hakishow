@@ -72,15 +72,18 @@ export function compare(box, before, after, o = {}) {
   box.classList.add('cmp');
   const set = (/** @type {number} */ v) => { pos = clamp(v); box.style.setProperty('--cmp', (pos * 100).toFixed(2) + '%'); range.value = String(Math.round(pos * 100)); box.classList.toggle('is-split', pos < .995); };
   range.addEventListener('input', () => set(Number(range.value) / 100));
-  // 在分隔线附近开始拖动；按住其他位置则显示原图。
+  // 分隔线画在 1 - pos 处（左侧原图、右侧作品）：手指在哪里，分隔线就在哪里。
+  // 在分隔线附近（或已分屏时任意位置）开始拖动；按住其他位置则显示原图。
   let drag = false;
+  const at = (/** @type {PointerEvent} */ e) => { const r = box.getBoundingClientRect(); return 1 - (e.clientX - r.left) / r.width; };
   box.addEventListener('pointerdown', e => {
     if (!can()) return;
-    const r = box.getBoundingClientRect(), x = (e.clientX - r.left) / r.width;
-    if (Math.abs(x - pos) < .08 || box.classList.contains('is-split')) { drag = true; box.setPointerCapture(e.pointerId); set(x); e.preventDefault(); }
+    const v = at(e);
+    if (Math.abs(v - pos) < .08 || box.classList.contains('is-split')) { drag = true; box.setPointerCapture(e.pointerId); set(v); e.preventDefault(); }
   });
-  box.addEventListener('pointermove', e => { if (!drag) return; const r = box.getBoundingClientRect(); set((e.clientX - r.left) / r.width); });
-  box.addEventListener('pointerup', () => { drag = false; });
+  box.addEventListener('pointermove', e => { if (drag) set(at(e)); });
+  const stop = () => { drag = false; };
+  box.addEventListener('pointerup', stop); box.addEventListener('pointercancel', stop);
   holdable(box, on => { if (!drag) box.classList.toggle('is-before', on && can()); }, 160);
   range.addEventListener('focus', () => { if (!can()) range.blur(); });
   void before; void after;

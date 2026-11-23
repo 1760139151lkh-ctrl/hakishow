@@ -147,7 +147,7 @@ export function shapesOf(f) {
 
 /** 从头发蒙版中去除眉毛和下半脸（包括存在的胡须），避免错误识别区域被染色。 @param {CanvasRenderingContext2D} x @param {Face} f @param {boolean} beard @param {number} [k] 蒙版相对于检测人脸图片的缩放比例。
  */
-function clearNotHair(x, f, beard, k = 1) {
+function clearNotHair(x, f, beard, k = 1, keep = [false, false]) {
   const s = shapesOf(f), path = (/** @type {Pt[]} */ pts) => { x.beginPath(); pts.forEach((p, i) => (i ? x.lineTo(p.x * k, p.y * k) : x.moveTo(p.x * k, p.y * k))); x.closePath(); };
   x.save(); x.globalCompositeOperation = 'destination-out'; x.fillStyle = x.strokeStyle = '#fff'; x.lineJoin = 'round';
   for (const b of s.beard) {
@@ -155,8 +155,31 @@ function clearNotHair(x, f, beard, k = 1) {
     x.fill();
     if (beard) { x.lineWidth = f.box[2] * k * .36; x.stroke(); }
   }
-  for (const b of f.hairExclusion?.brows || BROWS.map(i => grow(at(f, i), .12, .55))) { path(b); x.fill(); }
+  // 被刘海盖住的眉毛不扣除：那里其实是头发，扣掉会在刘海上留下一条没被染色的黑带。
+  // 露出的眉毛只扣掉眉毛本身（略放大），不再向上扩到刘海里。
+  (f.hairExclusion?.brows || BROWS.map(i => grow(at(f, i), .1, .22))).forEach((b, i) => { if (!keep[i]) { path(b); x.fill(); } });
+  // 眼睛永远不是头发：深色瞳孔有时会被头发分割误判，染发时会把眼睛染色。
+  for (const e of EYES) { path(grow(at(f, e), .3, .8)); x.fill(); }
   x.restore();
+}
+/** 两侧眉毛是否被刘海盖住：眉毛处与其正上方都被头发分割判为头发，说明头发从额头一直垂到眉毛，
+ *  这时眉毛区域属于刘海，染发时应一并染色。只露出眉毛、额头是皮肤时仍照常扣除（避免把深色眉毛当成头发）。
+ *  @param {CanvasRenderingContext2D} x 已画好头发蒙版的画布 @param {Face} f @returns {[boolean, boolean]} */
+function browsUnderBangs(x, f) {
+  const alphaAt = (/** @type {number} */ px, /** @type {number} */ py) => {
+    const r = Math.max(1, Math.round(f.box[2] * .012)), sx = Math.round(px) - r, sy = Math.round(py) - r;
+    if (sx < 0 || sy < 0 || sx + 2 * r >= x.canvas.width || sy + 2 * r >= x.canvas.height) return 0;
+    const d = x.getImageData(sx, sy, 2 * r + 1, 2 * r + 1).data; let s = 0;
+    for (let i = 3; i < d.length; i += 4) s += d[i];
+    return s / (d.length / 4) / 255;
+  };
+  try {
+    return /** @type {[boolean, boolean]} */ (BROWS.map(ids => {
+      const pts = at(f, ids), cx = pts.reduce((a, p) => a + p.x, 0) / pts.length, cy = pts.reduce((a, p) => a + p.y, 0) / pts.length;
+      const top = Math.min(...pts.map(p => p.y)), span = Math.max(4, f.box[3] * .05);
+      return alphaAt(cx, cy) > .5 && alphaAt(cx, top - span * .6) > .5 && alphaAt(cx, top - span * 1.4) > .5;
+    }));
+  } catch { return [false, false]; }
 }
 /** 依据下巴明显深于颧骨的程度，估计是否存在胡须。 @param {HTMLCanvasElement} pic @param {Face} f */
 function bearded(pic, f) {
@@ -186,8 +209,9 @@ export async function maskOf(picture, f, part) {
   if (kind === 'hair') {
     const hair = await hairOf(picture); if (!hair) return null;
     x.drawImage(hair, 0, 0, w, h);
+    const keep = browsUnderBangs(x, f);
     x.globalCompositeOperation = 'destination-out'; x.filter = 'blur(' + Math.max(1.5, w / 200).toFixed(1) + 'px)'; x.fillStyle = '#fff';
-    clearNotHair(x, f, bearded(picture, f));
+    clearNotHair(x, f, bearded(picture, f), 1, keep);
     x.globalCompositeOperation = 'source-over'; x.filter = 'none';
     if (part === 'cut') {   // 在头发周围预留空间，以支持更长或更蓬松的发型。
       const grown = make(w, h), gx = /** @type {CanvasRenderingContext2D} */ (grown.getContext('2d'));
