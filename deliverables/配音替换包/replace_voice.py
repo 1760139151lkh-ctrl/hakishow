@@ -10,7 +10,7 @@ HakiShow 演示讲解视频 · 配音替换工具
 用法（在本文件夹内运行）：
   整轨模式（声线转换得到的整条音频，推荐）：
     python replace_voice.py --full 我的整轨.wav
-  逐句模式（按“旁白文本.txt”逐句生成的配音，文件名用编号如 v01.wav、v12.mp3，或行号 01.wav…19.wav）：
+  逐句模式（按“旁白文本.txt”逐句生成的配音，文件名用编号如 v01.wav、v12.mp3，或行号 01.wav…20.wav）：
     python replace_voice.py --voice-dir 我的配音
 
 依赖：Python 3.8+、numpy（pip install numpy）、ffmpeg（加入 PATH，或用 --ffmpeg 指定；也可 pip install imageio-ffmpeg）。
@@ -200,7 +200,7 @@ def main():
     ap = argparse.ArgumentParser(description='HakiShow 演示视频配音替换（1:1 对齐原旁白时间）')
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument('--full', help='整轨模式：与原片等长的新旁白音频（例如对“原旁白-整轨.wav”做声线转换的结果）')
-    g.add_argument('--voice-dir', help='逐句模式：存放逐句配音的文件夹，文件名为编号（v01…v19）或行号（01…19）')
+    g.add_argument('--voice-dir', help='逐句模式：存放逐句配音的文件夹，文件名为编号（v01…v20）或行号（01…20）')
     ap.add_argument('--video', default=os.path.join(HERE, '..', 'HakiShow-演示讲解视频.mp4'), help='原视频（只拷贝画面）')
     ap.add_argument('--out-dir', default=os.path.join(HERE, '输出'), help='输出目录，默认为本文件夹下的“输出”')
     ap.add_argument('--ffmpeg', help='ffmpeg 可执行文件路径（默认从 PATH 或 imageio-ffmpeg 查找）')
