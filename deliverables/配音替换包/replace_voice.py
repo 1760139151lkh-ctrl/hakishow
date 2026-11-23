@@ -3,14 +3,14 @@
 """
 HakiShow 演示讲解视频 · 配音替换工具
 
-把新声线 1:1 对齐到原旁白的时间槽：整轨模式校正整体与逐句延迟；逐句模式把 31 个短句的发声段
-逐一伸缩到原配音同一短句的起止位置（保持音高），与画面内嵌字幕对齐。随后按原配音逐句匹配响度，
+把新声线 1:1 对齐到原旁白的时间槽：整轨模式校正整体与逐句延迟；逐句模式把 40 个短句的发声段
+逐一伸缩到原配音同一短句的起止位置（保持音高），与画面大字和 SRT 字幕对齐。随后按原配音逐句匹配响度，
 叠加“背景声-无旁白.wav”，按原片相同的母带流程输出。视频画面直接拷贝，不重新编码。
 
 用法（在本文件夹内运行）：
   整轨模式（声线转换得到的整条音频，推荐）：
     python replace_voice.py --full 我的整轨.wav
-  逐句模式（按“旁白文本.txt”逐句生成的配音，文件名用编号如 n1.wav、n4a.mp3，或行号 01.wav…12.wav）：
+  逐句模式（按“旁白文本.txt”逐句生成的配音，文件名用编号如 v01.wav、v12.mp3，或行号 01.wav…19.wav）：
     python replace_voice.py --voice-dir 我的配音
 
 依赖：Python 3.8+、numpy（pip install numpy）、ffmpeg（加入 PATH，或用 --ffmpeg 指定；也可 pip install imageio-ffmpeg）。
@@ -200,7 +200,7 @@ def main():
     ap = argparse.ArgumentParser(description='HakiShow 演示视频配音替换（1:1 对齐原旁白时间）')
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument('--full', help='整轨模式：与原片等长的新旁白音频（例如对“原旁白-整轨.wav”做声线转换的结果）')
-    g.add_argument('--voice-dir', help='逐句模式：存放逐句配音的文件夹，文件名为编号（n1、n2、n3、n4a、n4b、n4c、n5…n10）或行号（01…12）')
+    g.add_argument('--voice-dir', help='逐句模式：存放逐句配音的文件夹，文件名为编号（v01…v19）或行号（01…19）')
     ap.add_argument('--video', default=os.path.join(HERE, '..', 'HakiShow-演示讲解视频.mp4'), help='原视频（只拷贝画面）')
     ap.add_argument('--out-dir', default=os.path.join(HERE, '输出'), help='输出目录，默认为本文件夹下的“输出”')
     ap.add_argument('--ffmpeg', help='ffmpeg 可执行文件路径（默认从 PATH 或 imageio-ffmpeg 查找）')
@@ -232,7 +232,7 @@ def main():
                 files[stem.lower()] = os.path.join(a.voice_dir, f)
         for L in T['lines']:
             s0, n_line = int(round(L['start'] * SR)), int(round(L['duration'] * SR))
-            # 文件名可以是编号（n1、n4a…），也可以是行号（1、01、001，对应“旁白文本.txt”的第几行）
+            # 文件名可以是编号（v01、v12…），也可以是行号（1、01、001，对应“旁白文本.txt”的第几行）
             keys = [L['id'].lower(), str(L['index']), '%02d' % L['index'], '%03d' % L['index']]
             path = next((files[k] for k in keys if k in files), None)
             if not path:
@@ -335,7 +335,7 @@ def main():
     ok = [c for c in checks if c[3] is not None]
     if ok:
         smax = max(abs(c[3]) for c in ok); emax = max(abs(c[4]) for c in ok)
-        md += ['## 逐短句对齐检查（与画面内嵌字幕对应）', '',
+        md += ['## 逐短句对齐检查（与画面大字、SRT 字幕对应）', '',
                '共 %d 个短句：发声起点最大偏差 %.1f 毫秒，平均 %.1f 毫秒；发声终点最大偏差 %.1f 毫秒，平均 %.1f 毫秒。60 帧视频一帧约 16.7 毫秒。' % (
                    len(ok), smax, sum(abs(c[3]) for c in ok) / len(ok), emax, sum(abs(c[4]) for c in ok) / len(ok)), '',
                '| 编号 | 字幕开始（秒） | 起点差（毫秒） | 终点差（毫秒） | 短句 |', '|---|---|---|---|---|']
